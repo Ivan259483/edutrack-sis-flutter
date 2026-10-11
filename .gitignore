@@ -1,0 +1,12 @@
+# Backend (Node.js)
+node_modules
+.env
+.env.*
+!.env.example
+*.log
+.vercel
+.DS_Store
+
+# Flutter (frontend/.gitignore has the full list)
+build/
+.dart_tool/
