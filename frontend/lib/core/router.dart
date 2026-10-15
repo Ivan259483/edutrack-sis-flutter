@@ -29,25 +29,22 @@ String? guard(Session session, String location) {
 }
 
 GoRouter buildRouter(Session session) => GoRouter(
-      initialLocation: '/loading',
-      refreshListenable: session,
-      redirect: (context, state) => guard(session, state.matchedLocation),
-      errorBuilder: (context, state) => NotFoundPage(path: state.uri.path),
-      routes: [
-        GoRoute(path: '/', redirect: (context, state) => '/login'),
-        GoRoute(path: '/loading', builder: (context, state) => const SplashPage()),
-        GoRoute(
-          path: '/login',
-          builder: (context, state) => LoginPage(
-            key: ValueKey(state.uri.queryParameters['role']),
-            initialRole: state.uri.queryParameters['role'] ?? 'student',
-          ),
-        ),
-        GoRoute(path: '/register', builder: (context, state) => const RegisterPage()),
-        studentRoutes(),
-        adminRoutes(),
-      ],
-    );
+  initialLocation: '/loading',
+  refreshListenable: session,
+  redirect: (context, state) => guard(session, state.matchedLocation),
+  errorBuilder: (context, state) => NotFoundPage(path: state.uri.path),
+  routes: [
+    GoRoute(path: '/', redirect: (context, state) => '/login'),
+    GoRoute(path: '/loading', builder: (context, state) => const SplashPage()),
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => LoginPage(key: ValueKey(state.uri.queryParameters['role']), initialRole: state.uri.queryParameters['role'] ?? 'student'),
+    ),
+    GoRoute(path: '/register', builder: (context, state) => const RegisterPage()),
+    studentRoutes(),
+    adminRoutes(),
+  ],
+);
 
 /// Hosts the router and rebuilds it only when the session object changes.
 class AppRouterScope extends StatefulWidget {

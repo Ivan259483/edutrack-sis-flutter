@@ -11,21 +11,21 @@ import 'support_page.dart';
 
 /// /student/... screens inside the student shell (frontend/src/App.jsx).
 ShellRoute studentRoutes() => ShellRoute(
-      builder: (context, state, child) => StudentShell(location: state.matchedLocation, child: child),
-      routes: [
-        GoRoute(path: '/student', redirect: (context, state) => '/student/dashboard'),
-        GoRoute(path: '/student/dashboard', builder: (context, state) => const StudentDashboardPage()),
-        GoRoute(
-          path: '/student/profile',
-          builder: (context, state) => StudentProfilePage(section: state.uri.queryParameters['section']),
-        ),
-        GoRoute(
-          path: '/student/enrollment',
-          builder: (context, state) => StudentEnrollmentPage(search: state.uri.queryParameters['search'] ?? ''),
-        ),
-        GoRoute(path: '/student/grades', builder: (context, state) => const StudentGradesPage()),
-        GoRoute(path: '/student/schedule', builder: (context, state) => const StudentSchedulePage()),
-        GoRoute(path: '/student/notifications', builder: (context, state) => const StudentNotificationsPage()),
-        GoRoute(path: '/student/support', builder: (context, state) => const StudentSupportPage()),
-      ],
-    );
+  builder: (context, state, child) => StudentShell(location: state.matchedLocation, child: child),
+  routes: [
+    GoRoute(path: '/student', redirect: (context, state) => '/student/dashboard'),
+    GoRoute(path: '/student/dashboard', builder: (context, state) => const StudentDashboardPage()),
+    GoRoute(
+      path: '/student/profile',
+      builder: (context, state) => StudentProfilePage(section: state.uri.queryParameters['section']),
+    ),
+    GoRoute(
+      path: '/student/enrollment',
+      builder: (context, state) => StudentEnrollmentPage(search: state.uri.queryParameters['search'] ?? ''),
+    ),
+    GoRoute(path: '/student/grades', builder: (context, state) => const StudentGradesPage()),
+    GoRoute(path: '/student/schedule', builder: (context, state) => const StudentSchedulePage()),
+    GoRoute(path: '/student/notifications', builder: (context, state) => const StudentNotificationsPage()),
+    GoRoute(path: '/student/support', builder: (context, state) => const StudentSupportPage()),
+  ],
+);

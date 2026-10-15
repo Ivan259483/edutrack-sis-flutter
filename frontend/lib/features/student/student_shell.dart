@@ -44,11 +44,22 @@ class StudentShell extends StatelessWidget {
     );
     return Scaffold(
       backgroundColor: AppColors.pageBg,
-      drawer: wide ? null : Drawer(width: 260, backgroundColor: AppColors.slate900, child: StudentSidebar(location: location, inDrawer: true)),
+      drawer: wide
+          ? null
+          : Drawer(
+              width: 260,
+              backgroundColor: AppColors.slate900,
+              child: StudentSidebar(location: location, inDrawer: true),
+            ),
       body: SafeArea(
         bottom: false,
         child: wide
-            ? Row(children: [StudentSidebar(location: location), Expanded(child: body)])
+            ? Row(
+                children: [
+                  StudentSidebar(location: location),
+                  Expanded(child: body),
+                ],
+              )
             : body,
       ),
     );
@@ -77,7 +88,9 @@ class StudentSidebar extends StatelessWidget {
             // Brand header
             Container(
               padding: const EdgeInsets.fromLTRB(20, 20, 8, 20),
-              decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0x406C757D)))),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Color(0x406C757D))),
+              ),
               child: Row(
                 children: [
                   Container(
@@ -91,7 +104,10 @@ class StudentSidebar extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('EduTrack', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                        Text(
+                          'EduTrack',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
                         Text('Student Portal', style: TextStyle(color: AppColors.slate400, fontSize: 11)),
                       ],
                     ),
@@ -129,7 +145,9 @@ class StudentSidebar extends StatelessWidget {
             // User card & logout
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0x406C757D)))),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: Color(0x406C757D))),
+              ),
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(color: AppColors.slate800, borderRadius: BorderRadius.circular(10)),
@@ -148,9 +166,11 @@ class StudentSidebar extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(user?.name ?? 'User',
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                          Text(
+                            user?.name ?? 'User',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                          ),
                           Text(user?.studentId ?? 'Student', style: const TextStyle(color: AppColors.slate400, fontSize: 11)),
                         ],
                       ),
@@ -180,28 +200,26 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: selected ? AppColors.primary : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: selected ? Colors.white : AppColors.slate400),
-                const SizedBox(width: 14),
-                Text(label,
-                    style: TextStyle(
-                      color: selected ? Colors.white : AppColors.slate400,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                      fontSize: 14,
-                    )),
-              ],
+    color: selected ? AppColors.primary : Colors.transparent,
+    borderRadius: BorderRadius.circular(10),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: selected ? Colors.white : AppColors.slate400),
+            const SizedBox(width: 14),
+            Text(
+              label,
+              style: TextStyle(color: selected ? Colors.white : AppColors.slate400, fontWeight: selected ? FontWeight.w600 : FontWeight.normal, fontSize: 14),
             ),
-          ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Top bar: menu button (phones), breadcrumb title, subject search,
@@ -250,11 +268,7 @@ class _StudentTopBar extends StatelessWidget {
       child: Row(
         children: [
           if (showMenu)
-            IconButton(
-              tooltip: 'Open navigation menu',
-              icon: const Icon(Icons.menu),
-              onPressed: () => Scaffold.of(context).openDrawer(),
-            )
+            IconButton(tooltip: 'Open navigation menu', icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(context).openDrawer())
           else
             const SizedBox(width: 12),
           if (MediaQuery.sizeOf(context).width >= 576) ...[
@@ -262,9 +276,17 @@ class _StudentTopBar extends StatelessWidget {
             const Text('  /  ', style: TextStyle(color: AppColors.muted, fontSize: 13)),
           ],
           Expanded(
-            child: Text(title, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+            child: Text(
+              title,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            ),
           ),
-          IconButton(tooltip: 'Search subjects', icon: const Icon(Icons.search, color: AppColors.muted), onPressed: () => _search(context)),
+          IconButton(
+            tooltip: 'Search subjects',
+            icon: const Icon(Icons.search, color: AppColors.muted),
+            onPressed: () => _search(context),
+          ),
           IconButton(
             tooltip: 'Notifications',
             icon: const Icon(Icons.notifications_none, color: AppColors.muted),
@@ -286,7 +308,10 @@ class _StudentTopBar extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(user?.name ?? '', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.dark, fontSize: 13)),
+                    Text(
+                      user?.name ?? '',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.dark, fontSize: 13),
+                    ),
                     Text(user?.email ?? '', style: const TextStyle(color: AppColors.muted, fontSize: 11)),
                   ],
                 ),
@@ -296,7 +321,10 @@ class _StudentTopBar extends StatelessWidget {
               const PopupMenuItem(value: '/student/profile?section=security', child: _MenuRow(Icons.settings, 'Settings')),
               const PopupMenuItem(value: '/student/support', child: _MenuRow(Icons.help, 'Help & Support')),
               const PopupMenuDivider(),
-              const PopupMenuItem(value: 'logout', child: _MenuRow(Icons.logout, 'Logout', color: AppColors.danger)),
+              const PopupMenuItem(
+                value: 'logout',
+                child: _MenuRow(Icons.logout, 'Logout', color: AppColors.danger),
+              ),
             ],
             child: Container(
               margin: const EdgeInsets.only(right: 8, left: 4),
@@ -311,7 +339,10 @@ class _StudentTopBar extends StatelessWidget {
                   CircleAvatar(
                     radius: 15,
                     backgroundColor: AppColors.primary,
-                    child: Text(initials, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      initials,
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
                   ),
                   const SizedBox(width: 4),
                   const Icon(Icons.expand_more, size: 16, color: AppColors.muted),
@@ -332,11 +363,16 @@ class _MenuRow extends StatelessWidget {
   final Color? color;
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Icon(icon, size: 16, color: color ?? AppColors.muted),
-        const SizedBox(width: 10),
-        Text(label, style: TextStyle(color: color ?? AppColors.dark, fontSize: 14, fontWeight: color != null ? FontWeight.w600 : null)),
-      ]);
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, size: 16, color: color ?? AppColors.muted),
+      const SizedBox(width: 10),
+      Text(
+        label,
+        style: TextStyle(color: color ?? AppColors.dark, fontSize: 14, fontWeight: color != null ? FontWeight.w600 : null),
+      ),
+    ],
+  );
 }
 
 /// Scrollable page body with pull-to-refresh and the web's padding.
@@ -350,11 +386,12 @@ class StudentPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final padding = MediaQuery.sizeOf(context).width >= studentWideBreakpoint ? 24.0 : 12.0;
-    final list = ListView(
+    // Built in full (not lazily) so a section further down can be scrolled into view.
+    final list = SingleChildScrollView(
       controller: controller,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.fromLTRB(padding, padding, padding, padding + MediaQuery.paddingOf(context).bottom),
-      children: children,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
     );
     return Container(
       color: dark ? AppColors.slate900 : AppColors.pageBg,

@@ -54,9 +54,9 @@ class _StudentProfilePageState extends State<StudentProfilePage> with ApiLoader 
   }
 
   void _scrollToSecurity() => WidgetsBinding.instance.addPostFrameCallback((_) {
-        final target = _securityKey.currentContext;
-        if (target != null) Scrollable.ensureVisible(target, duration: const Duration(milliseconds: 400), alignment: 0.05);
-      });
+    final target = _securityKey.currentContext;
+    if (target != null) Scrollable.ensureVisible(target, duration: const Duration(milliseconds: 400), alignment: 0.05);
+  });
 
   String get _enrollmentStatus {
     final current = asMap(_enrollment['enrollment']);
@@ -65,44 +65,56 @@ class _StudentProfilePageState extends State<StudentProfilePage> with ApiLoader 
   }
 
   PrintableDoc _profileDoc() => PrintableDoc(
-        title: 'Student Profile - ${_student['studentId']}',
-        subtitle: 'Office of the University Registrar • Student Records Division',
-        badge: 'Student Profile',
-        info: [
-          ('Student Name', '${_student['fullName']}'),
-          ('Student ID', '${_student['studentId']}'),
-          ('Degree Program', programName(_student['program'] as String?)),
-          ('Year & Section', '${_student['yearLevel']} - ${_student['section']}'),
-          ('Academic Status', '${_student['academicStatus']}'),
-          ('Enrollment', _enrollmentStatus),
+    title: 'Student Profile - ${_student['studentId']}',
+    subtitle: 'Office of the University Registrar • Student Records Division',
+    badge: 'Student Profile',
+    info: [
+      ('Student Name', '${_student['fullName']}'),
+      ('Student ID', '${_student['studentId']}'),
+      ('Degree Program', programName(_student['program'] as String?)),
+      ('Year & Section', '${_student['yearLevel']} - ${_student['section']}'),
+      ('Academic Status', '${_student['academicStatus']}'),
+      ('Enrollment', _enrollmentStatus),
+    ],
+    sections: [
+      DocSection(
+        heading: 'General Information',
+        rows: [
+          ['Full Legal Name', '${_student['fullName']}'],
+          ['Date of Birth', _dob],
+          ['Gender', _shown(_student['gender'])],
+          ['Civil Status', _shown(_student['civilStatus'])],
+          ['Nationality', _shown(_student['nationality'])],
         ],
-        sections: [
-          DocSection(heading: 'General Information', rows: [
-            ['Full Legal Name', '${_student['fullName']}'],
-            ['Date of Birth', _dob],
-            ['Gender', _shown(_student['gender'])],
-            ['Civil Status', _shown(_student['civilStatus'])],
-            ['Nationality', _shown(_student['nationality'])],
-          ]),
-          DocSection(heading: 'Contact Information', rows: [
-            ['Institutional Email', '${_student['email']}'],
-            ['Personal Email', _shown(_student['personalEmail'])],
-            ['Mobile Number', _shown(_student['contactNumber'])],
-            ['Residential Address', _shown(_student['address'])],
-          ]),
-          DocSection(heading: 'Emergency Contact', rows: [
-            ['Guardian / Contact Person', _shown(_student['emergencyContact'])],
-            ['Relationship', _shown(_student['guardianRelationship'])],
-            ['Emergency Hotline / Phone', _shown(_student['emergencyContactNumber'])],
-          ]),
-          DocSection(heading: 'Academic Information', rows: [
-            ['College Department', departments[_student['program']] ?? '—'],
-            ['Degree Program', programName(_student['program'] as String?)],
-            ['Year & Section', '${_student['yearLevel']} - ${_student['section']}'],
-            ['Academic Status', '${_student['academicStatus']}'],
-          ]),
+      ),
+      DocSection(
+        heading: 'Contact Information',
+        rows: [
+          ['Institutional Email', '${_student['email']}'],
+          ['Personal Email', _shown(_student['personalEmail'])],
+          ['Mobile Number', _shown(_student['contactNumber'])],
+          ['Residential Address', _shown(_student['address'])],
         ],
-      );
+      ),
+      DocSection(
+        heading: 'Emergency Contact',
+        rows: [
+          ['Guardian / Contact Person', _shown(_student['emergencyContact'])],
+          ['Relationship', _shown(_student['guardianRelationship'])],
+          ['Emergency Hotline / Phone', _shown(_student['emergencyContactNumber'])],
+        ],
+      ),
+      DocSection(
+        heading: 'Academic Information',
+        rows: [
+          ['College Department', departments[_student['program']] ?? '—'],
+          ['Degree Program', programName(_student['program'] as String?)],
+          ['Year & Section', '${_student['yearLevel']} - ${_student['section']}'],
+          ['Academic Status', '${_student['academicStatus']}'],
+        ],
+      ),
+    ],
+  );
 
   String get _dob {
     final value = _student['dateOfBirth'] as String?;
@@ -113,7 +125,9 @@ class _StudentProfilePageState extends State<StudentProfilePage> with ApiLoader 
   Widget build(BuildContext context) {
     if (loading) return const StudentPage(children: [Loading()]);
     if (loadError != null) {
-      return StudentPage(children: [LoadError(message: loadError!, onRetry: () => reload(showSpinner: true))]);
+      return StudentPage(
+        children: [LoadError(message: loadError!, onRetry: () => reload(showSpinner: true))],
+      );
     }
     final s = _student;
     return StudentPage(
@@ -134,8 +148,10 @@ class _StudentProfilePageState extends State<StudentProfilePage> with ApiLoader 
                   CircleAvatar(
                     radius: 34,
                     backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    child: Text('${s['avatarInitials'] ?? initials('${s['fullName']}')}',
-                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 22)),
+                    child: Text(
+                      '${s['avatarInitials'] ?? initials('${s['fullName']}')}',
+                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 22),
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Flexible(
@@ -144,37 +160,53 @@ class _StudentProfilePageState extends State<StudentProfilePage> with ApiLoader 
                       children: [
                         Text('${s['fullName']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 6),
-                        Wrap(spacing: 6, runSpacing: 6, children: [
-                          Pill('● $_enrollmentStatus', color: AppColors.success),
-                          Pill('${s['academicStatus']}', color: AppColors.primary),
-                        ]),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            Pill(_enrollmentStatus, color: AppColors.success, dot: true),
+                            Pill('${s['academicStatus']}', color: AppColors.primary),
+                          ],
+                        ),
                         const SizedBox(height: 6),
-                        Text.rich(TextSpan(style: const TextStyle(color: AppColors.muted, fontSize: 13), children: [
-                          const TextSpan(text: 'Student ID: '),
-                          TextSpan(text: '${s['studentId']}', style: const TextStyle(color: AppColors.dark, fontWeight: FontWeight.bold)),
-                          TextSpan(text: ' • ${programName(s['program'] as String?)} (${s['section']})'),
-                        ])),
+                        Text.rich(
+                          TextSpan(
+                            style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                            children: [
+                              const TextSpan(text: 'Student ID: '),
+                              TextSpan(
+                                text: '${s['studentId']}',
+                                style: const TextStyle(color: AppColors.dark, fontWeight: FontWeight.bold),
+                              ),
+                              TextSpan(text: ' • ${programName(s['program'] as String?)} (${s['section']})'),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                if (!_editing)
-                  FilledButton.icon(
-                    onPressed: () => setState(() {
-                      _saved = false;
-                      _editing = true;
-                    }),
-                    icon: const Icon(Icons.edit, size: 16),
-                    label: const Text('Edit Contact Details'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (!_editing)
+                    FilledButton.icon(
+                      onPressed: () => setState(() {
+                        _saved = false;
+                        _editing = true;
+                      }),
+                      icon: const Icon(Icons.edit, size: 16),
+                      label: const Text('Edit Contact Details'),
+                    ),
+                  OutlinedButton.icon(
+                    onPressed: () => _profileDoc().print(),
+                    icon: const Icon(Icons.picture_as_pdf, size: 16),
+                    label: const Text('Print Profile'),
                   ),
-                OutlinedButton.icon(
-                  onPressed: () => _profileDoc().print(),
-                  icon: const Icon(Icons.picture_as_pdf, size: 16),
-                  label: const Text('Print Profile'),
-                ),
-              ]),
+                ],
+              ),
             ],
           ),
         ),
@@ -193,44 +225,56 @@ class _StudentProfilePageState extends State<StudentProfilePage> with ApiLoader 
           const SizedBox(height: 16),
         ],
         // 2. Four information cards
-        ResponsiveGrid(minItemWidth: 380, spacing: 16, children: [
-          Panel(
-            child: Column(children: [
-              const PanelTitle('General Information', icon: Icons.person),
-              InfoRow('Full Legal Name', '${s['fullName']}'),
-              InfoRow('Date of Birth', _dob),
-              InfoRow('Gender', _shown(s['gender'])),
-              InfoRow('Civil Status', _shown(s['civilStatus'])),
-              InfoRow('Nationality', _shown(s['nationality']), last: true),
-            ]),
-          ),
-          Panel(
-            child: Column(children: [
-              const PanelTitle('Contact Information', icon: Icons.email),
-              InfoRow('Institutional Email', '${s['email']}'),
-              InfoRow('Personal Email', _shown(s['personalEmail'])),
-              InfoRow('Mobile Number', _shown(s['contactNumber'])),
-              InfoRow('Residential Address', _shown(s['address']), last: true),
-            ]),
-          ),
-          Panel(
-            child: Column(children: [
-              const PanelTitle('Emergency Contact', icon: Icons.monitor_heart, iconColor: AppColors.danger),
-              InfoRow('Guardian / Contact Person', _shown(s['emergencyContact'])),
-              InfoRow('Relationship', _shown(s['guardianRelationship'])),
-              InfoRow('Emergency Hotline / Phone', _shown(s['emergencyContactNumber']), last: true),
-            ]),
-          ),
-          Panel(
-            child: Column(children: [
-              const PanelTitle('Academic Information', icon: Icons.school, iconColor: AppColors.success),
-              InfoRow('College Department', departments[s['program']] ?? '—'),
-              InfoRow('Degree Program', programName(s['program'] as String?)),
-              InfoRow('Year & Section', '${s['yearLevel']} - ${s['section']}'),
-              InfoRow('Academic Status', '', last: true, valueWidget: Pill('${s['academicStatus']}', color: AppColors.primary)),
-            ]),
-          ),
-        ]),
+        ResponsiveGrid(
+          minItemWidth: 380,
+          spacing: 16,
+          children: [
+            Panel(
+              child: Column(
+                children: [
+                  const PanelTitle('General Information', icon: Icons.person),
+                  InfoRow('Full Legal Name', '${s['fullName']}'),
+                  InfoRow('Date of Birth', _dob),
+                  InfoRow('Gender', _shown(s['gender'])),
+                  InfoRow('Civil Status', _shown(s['civilStatus'])),
+                  InfoRow('Nationality', _shown(s['nationality']), last: true),
+                ],
+              ),
+            ),
+            Panel(
+              child: Column(
+                children: [
+                  const PanelTitle('Contact Information', icon: Icons.email),
+                  InfoRow('Institutional Email', '${s['email']}'),
+                  InfoRow('Personal Email', _shown(s['personalEmail'])),
+                  InfoRow('Mobile Number', _shown(s['contactNumber'])),
+                  InfoRow('Residential Address', _shown(s['address']), last: true),
+                ],
+              ),
+            ),
+            Panel(
+              child: Column(
+                children: [
+                  const PanelTitle('Emergency Contact', icon: Icons.monitor_heart, iconColor: AppColors.danger),
+                  InfoRow('Guardian / Contact Person', _shown(s['emergencyContact'])),
+                  InfoRow('Relationship', _shown(s['guardianRelationship'])),
+                  InfoRow('Emergency Hotline / Phone', _shown(s['emergencyContactNumber']), last: true),
+                ],
+              ),
+            ),
+            Panel(
+              child: Column(
+                children: [
+                  const PanelTitle('Academic Information', icon: Icons.school, iconColor: AppColors.success),
+                  InfoRow('College Department', departments[s['program']] ?? '—'),
+                  InfoRow('Degree Program', programName(s['program'] as String?)),
+                  InfoRow('Year & Section', '${s['yearLevel']} - ${s['section']}'),
+                  InfoRow('Academic Status', '', last: true, valueWidget: Pill('${s['academicStatus']}', color: AppColors.primary)),
+                ],
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         const Text(
           'You can update your contact details above. To correct your name, student ID or academic information, open a ticket in Help and Support.',
@@ -282,8 +326,7 @@ Map<String, String> validateContact(Map<String, String> form) {
 
 class _EditContactFormState extends State<EditContactForm> {
   late final Map<String, TextEditingController> _controllers = {
-    for (final f in _contactFields)
-      f.name: TextEditingController(text: _shown(widget.student[f.name]) == '—' ? '' : '${widget.student[f.name]}'),
+    for (final f in _contactFields) f.name: TextEditingController(text: _shown(widget.student[f.name]) == '—' ? '' : '${widget.student[f.name]}'),
   };
   bool _touched = false;
   bool _saving = false;
@@ -327,30 +370,31 @@ class _EditContactFormState extends State<EditContactForm> {
         children: [
           const Text('Edit Contact Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           const SizedBox(height: 4),
-          const Text('Name, student ID and academic information are managed by the Registrar.',
-              style: TextStyle(color: AppColors.muted, fontSize: 13)),
+          const Text('Name, student ID and academic information are managed by the Registrar.', style: TextStyle(color: AppColors.muted, fontSize: 13)),
           const SizedBox(height: 12),
           if (_serverError.isNotEmpty) AlertBox(_serverError),
-          ResponsiveGrid(minItemWidth: 300, children: [
-            for (final field in _contactFields)
-              TextField(
-                key: Key('contact-${field.name}'),
-                controller: _controllers[field.name],
-                keyboardType: field.keyboard,
-                maxLength: field.name == 'address' ? 300 : 120,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(labelText: field.label, errorText: errors[field.name], counterText: ''),
-              ),
-          ]),
+          ResponsiveGrid(
+            minItemWidth: 300,
+            children: [
+              for (final field in _contactFields)
+                TextField(
+                  key: Key('contact-${field.name}'),
+                  controller: _controllers[field.name],
+                  keyboardType: field.keyboard,
+                  maxLength: field.name == 'address' ? 300 : 120,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(labelText: field.label, errorText: errors[field.name], counterText: ''),
+                ),
+            ],
+          ),
           const SizedBox(height: 12),
-          Wrap(spacing: 8, children: [
-            FilledButton.icon(
-              onPressed: _saving ? null : _submit,
-              icon: const Icon(Icons.save, size: 16),
-              label: Text(_saving ? 'Saving…' : 'Save Changes'),
-            ),
-            OutlinedButton(onPressed: _saving ? null : widget.onCancel, child: const Text('Cancel')),
-          ]),
+          Wrap(
+            spacing: 8,
+            children: [
+              FilledButton.icon(onPressed: _saving ? null : _submit, icon: const Icon(Icons.save, size: 16), label: Text(_saving ? 'Saving…' : 'Save Changes')),
+              OutlinedButton(onPressed: _saving ? null : widget.onCancel, child: const Text('Cancel')),
+            ],
+          ),
         ],
       ),
     );
@@ -416,7 +460,12 @@ class _ChangePasswordCardState extends State<ChangePasswordCard> {
         onChanged: (_) => setState(() {}),
         decoration: const InputDecoration(labelText: 'Current password'),
       ),
-      TextField(key: const Key('password-new'), controller: _next, obscureText: true, decoration: const InputDecoration(labelText: 'New password')),
+      TextField(
+        key: const Key('password-new'),
+        controller: _next,
+        obscureText: true,
+        decoration: const InputDecoration(labelText: 'New password'),
+      ),
       TextField(
         key: const Key('password-confirm'),
         controller: _confirm,
@@ -431,10 +480,7 @@ class _ChangePasswordCardState extends State<ChangePasswordCard> {
         if (_status != null) AlertBox(_status!.$2, type: _status!.$1),
         ResponsiveGrid(minItemWidth: widget.dense ? 600 : 240, children: fields),
         const SizedBox(height: 12),
-        FilledButton(
-          onPressed: _saving || _current.text.isEmpty ? null : _submit,
-          child: Text(_saving ? 'Saving…' : 'Update password'),
-        ),
+        FilledButton(onPressed: _saving || _current.text.isEmpty ? null : _submit, child: Text(_saving ? 'Saving…' : 'Update password')),
       ],
     );
     return widget.dense ? body : Panel(padding: const EdgeInsets.all(20), child: body);

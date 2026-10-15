@@ -25,8 +25,5 @@ class DemoAccount {
 /// `import.meta.env.DEV`). kDebugMode is a compile-time constant, so release
 /// builds contain neither the button nor these passwords.
 const Map<String, DemoAccount>? demoAccounts = kDebugMode
-    ? {
-        'student': DemoAccount('juan.delacruz@edutrack.edu', 'Student123!'),
-        'admin': DemoAccount('admin@edutrack.edu', 'Admin123!'),
-      }
+    ? {'student': DemoAccount('juan.delacruz@edutrack.edu', 'Student123!'), 'admin': DemoAccount('admin@edutrack.edu', 'Admin123!')}
     : null;

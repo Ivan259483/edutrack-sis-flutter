@@ -6,23 +6,16 @@ enum SessionStatus { loading, signedOut, signedIn }
 
 /// The signed-in account (`publicUser` in backend/controllers/authController.js).
 class AppUser {
-  const AppUser({
-    required this.id,
-    required this.name,
-    required this.email,
-    required this.role,
-    this.studentId,
-    this.profile,
-  });
+  const AppUser({required this.id, required this.name, required this.email, required this.role, this.studentId, this.profile});
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
-        id: json['id'] as String,
-        name: (json['name'] ?? '') as String,
-        email: (json['email'] ?? '') as String,
-        role: (json['role'] ?? 'student') as String,
-        studentId: json['studentId'] as String?,
-        profile: json['profile'] is Map ? Map<String, dynamic>.from(json['profile'] as Map) : null,
-      );
+    id: json['id'] as String,
+    name: (json['name'] ?? '') as String,
+    email: (json['email'] ?? '') as String,
+    role: (json['role'] ?? 'student') as String,
+    studentId: json['studentId'] as String?,
+    profile: json['profile'] is Map ? Map<String, dynamic>.from(json['profile'] as Map) : null,
+  );
 
   final String id;
   final String name;
@@ -65,11 +58,7 @@ class Session extends ChangeNotifier {
   /// Returns null on success, or the error message to show.
   Future<String?> login(String identifier, String password, String role, {bool remember = false}) async {
     try {
-      final data = await api.post('/auth/login', {
-        'identifier': identifier,
-        'password': password,
-        'role': role,
-      }) as Map<String, dynamic>;
+      final data = await api.post('/auth/login', {'identifier': identifier, 'password': password, 'role': role}) as Map<String, dynamic>;
       await api.tokens.save(data['token'] as String, remember: remember);
       _set(SessionStatus.signedIn, AppUser.fromJson(Map<String, dynamic>.from(data['user'] as Map)));
       return null;

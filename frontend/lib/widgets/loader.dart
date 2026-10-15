@@ -32,7 +32,6 @@ mixin ApiLoader<T extends StatefulWidget> on State<T> {
   }
 }
 
-List<Map<String, dynamic>> asList(Object? data) =>
-    data is List ? [for (final item in data) Map<String, dynamic>.from(item as Map)] : [];
+List<Map<String, dynamic>> asList(Object? data) => data is List ? [for (final item in data) Map<String, dynamic>.from(item as Map)] : [];
 
 Map<String, dynamic>? asMap(Object? data) => data is Map ? Map<String, dynamic>.from(data) : null;

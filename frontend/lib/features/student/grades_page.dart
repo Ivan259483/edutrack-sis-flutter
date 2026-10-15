@@ -20,12 +20,12 @@ class StudentGradesPage extends StatefulWidget {
 
 class _GradeRow {
   _GradeRow(Map<String, dynamic> g, this.instructor)
-      : code = '${g['subjectCode']}',
-        title = '${g['subjectTitle']}',
-        units = g['units'] as num,
-        midterm = formatGrade(g['midtermGrade']),
-        grade = formatGrade(g['finalGrade']),
-        remark = '${g['remark']}';
+    : code = '${g['subjectCode']}',
+      title = '${g['subjectTitle']}',
+      units = g['units'] as num,
+      midterm = formatGrade(g['midtermGrade']),
+      grade = formatGrade(g['finalGrade']),
+      remark = '${g['remark']}';
   final String code;
   final String title;
   final num units;
@@ -65,7 +65,9 @@ class _StudentGradesPageState extends State<StudentGradesPage> with ApiLoader {
   Widget build(BuildContext context) {
     if (loading) return const StudentPage(children: [Loading()]);
     if (loadError != null) {
-      return StudentPage(children: [LoadError(message: loadError!, onRetry: () => reload(showSpinner: true))]);
+      return StudentPage(
+        children: [LoadError(message: loadError!, onRetry: () => reload(showSpinner: true))],
+      );
     }
     final terms = _terms;
     final selectedTerm = _term.isNotEmpty ? _term : (terms.isNotEmpty ? terms.first : 'No published grades');
@@ -75,7 +77,7 @@ class _StudentGradesPageState extends State<StudentGradesPage> with ApiLoader {
     final summary = gradeSummary(termGrades);
     final gpa = formatGrade(summary.gpa);
     final notPassed = rows.where((r) => !r.passed).length;
-    final passText = rows.isEmpty ? '' : (notPassed > 0 ? '● $notPassed subject(s) not passed' : '● All Subjects Passed');
+    final passText = rows.isEmpty ? '' : (notPassed > 0 ? '• $notPassed subject(s) not passed' : '• All Subjects Passed');
     final passColor = notPassed > 0 ? AppColors.danger : AppColors.success;
     final profile = context.watch<Session>().user?.profile;
 
@@ -90,26 +92,35 @@ class _StudentGradesPageState extends State<StudentGradesPage> with ApiLoader {
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Row(mainAxisSize: MainAxisSize.min, children: [
-                const Text('Academic Term:', style: TextStyle(color: AppColors.muted, fontSize: 13, fontWeight: FontWeight.w500)),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 240,
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey(selectedTerm),
-                    initialValue: selectedTerm,
-                    isExpanded: true,
-                    decoration: const InputDecoration(fillColor: AppColors.light),
-                    items: terms.isEmpty
-                        ? [DropdownMenuItem(value: selectedTerm, child: Text(selectedTerm))]
-                        : [
-                            for (final (i, t) in terms.indexed)
-                              DropdownMenuItem(value: t, child: Text('$t${i == 0 ? ' (Latest)' : ''}', style: const TextStyle(fontWeight: FontWeight.w600))),
-                          ],
-                    onChanged: (v) => setState(() => _term = v ?? ''),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Academic Term:',
+                    style: TextStyle(color: AppColors.muted, fontSize: 13, fontWeight: FontWeight.w500),
                   ),
-                ),
-              ]),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 240,
+                    child: DropdownButtonFormField<String>(
+                      key: ValueKey(selectedTerm),
+                      initialValue: selectedTerm,
+                      isExpanded: true,
+                      decoration: const InputDecoration(fillColor: AppColors.light),
+                      items: terms.isEmpty
+                          ? [DropdownMenuItem(value: selectedTerm, child: Text(selectedTerm))]
+                          : [
+                              for (final (i, t) in terms.indexed)
+                                DropdownMenuItem(
+                                  value: t,
+                                  child: Text('$t${i == 0 ? ' (Latest)' : ''}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                                ),
+                            ],
+                      onChanged: (v) => setState(() => _term = v ?? ''),
+                    ),
+                  ),
+                ],
+              ),
               OutlinedButton.icon(
                 onPressed: () => _showTranscript(selectedTerm, rows, summary.units, gpa, passText, passColor, profile),
                 icon: const Icon(Icons.description, size: 16),
@@ -120,32 +131,35 @@ class _StudentGradesPageState extends State<StudentGradesPage> with ApiLoader {
         ),
         const SizedBox(height: 16),
         // 2. KPI cards
-        ResponsiveGrid(minItemWidth: 240, children: [
-          StatCard(
-            icon: Icons.show_chart,
-            color: AppColors.primary,
-            background: AppColors.blue50,
-            label: 'Term GPA',
-            value: Text(gpa),
-            caption: 'Weighted by units',
-          ),
-          StatCard(
-            icon: Icons.menu_book,
-            color: AppColors.success,
-            background: AppColors.green50,
-            label: 'Total Enrolled Units',
-            value: Text('${num0(summary.units)} Units'),
-            caption: '${rows.length} Subjects Evaluated',
-          ),
-          StatCard(
-            icon: Icons.emoji_events,
-            color: AppColors.amber600,
-            background: AppColors.amber50,
-            label: 'Academic Status',
-            value: Text('${profile?['academicStatus'] ?? '—'}', style: const TextStyle(fontSize: 18)),
-            caption: profile != null ? '${profile['yearLevel']} • ${profile['section']}' : '',
-          ),
-        ]),
+        ResponsiveGrid(
+          minItemWidth: 240,
+          children: [
+            StatCard(
+              icon: Icons.show_chart,
+              color: AppColors.primary,
+              background: AppColors.blue50,
+              label: 'Term GPA',
+              value: Text(gpa),
+              caption: 'Weighted by units',
+            ),
+            StatCard(
+              icon: Icons.menu_book,
+              color: AppColors.success,
+              background: AppColors.green50,
+              label: 'Total Enrolled Units',
+              value: Text('${num0(summary.units)} Units'),
+              caption: '${rows.length} Subjects Evaluated',
+            ),
+            StatCard(
+              icon: Icons.emoji_events,
+              color: AppColors.amber600,
+              background: AppColors.amber50,
+              label: 'Academic Status',
+              value: Text('${profile?['academicStatus'] ?? '—'}', style: const TextStyle(fontSize: 18)),
+              caption: profile != null ? '${profile['yearLevel']} • ${profile['section']}' : '',
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         // 3. Subject grades
         Panel(
@@ -164,12 +178,23 @@ class _StudentGradesPageState extends State<StudentGradesPage> with ApiLoader {
                   margin: const EdgeInsets.only(top: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(color: AppColors.light, borderRadius: BorderRadius.circular(8)),
-                  child: Wrap(spacing: 16, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                    const Text('Weighted Semester Average (GPA):', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text('${num0(summary.units)} Units', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text(gpa, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16)),
-                    Text(passText, style: TextStyle(color: passColor, fontSize: 13, fontWeight: FontWeight.w500)),
-                  ]),
+                  child: Wrap(
+                    spacing: 16,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text('Weighted Semester Average (GPA):', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('${num0(summary.units)} Units', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        gpa,
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
+                      ),
+                      Text(
+                        passText,
+                        style: TextStyle(color: passColor, fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
                 ),
             ],
           ),
@@ -179,82 +204,108 @@ class _StudentGradesPageState extends State<StudentGradesPage> with ApiLoader {
   }
 
   Widget _gradeTile(_GradeRow row) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.borderLight))),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(row.code, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace')),
-                Text(row.title, style: const TextStyle(fontWeight: FontWeight.w500)),
-                const SizedBox(height: 2),
-                Text('${num0(row.units)} units • Midterm ${row.midterm} • Final ${row.grade} • ${row.instructor}',
-                    style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-              ]),
-            ),
-            const SizedBox(width: 8),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(row.grade, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
-              const SizedBox(height: 4),
-              Pill(row.remark, color: row.passed ? AppColors.success : AppColors.danger, icon: row.passed ? Icons.check_circle : null),
-            ]),
-            const SizedBox(width: 8),
-            OutlinedButton(onPressed: () => _showDetail(row), child: const Text('Details')),
-          ],
-        ),
-      );
-
-  void _showDetail(_GradeRow row) => showDialog<void>(
-        context: context,
-        builder: (context) => Dialog(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: IconButton(tooltip: 'Close', onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
-                  ),
-                  CodeBadge(row.code),
-                  const SizedBox(height: 8),
-                  Text(row.title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                  Text(row.instructor, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    decoration: BoxDecoration(color: AppColors.blue50, borderRadius: BorderRadius.circular(16)),
-                    child: Column(children: [
-                      const Text('FINAL NUMERICAL GRADE', style: TextStyle(color: AppColors.muted, fontSize: 12, letterSpacing: 1)),
-                      Text(row.grade, style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                      Pill(row.remark, color: AppColors.success, solid: true),
-                    ]),
-                  ),
-                  const Divider(height: 32),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-                    _figure('Midterm Exam', row.midterm),
-                    _figure('Final Exam', row.grade),
-                    _figure('Credits', '${num0(row.units)} Units'),
-                  ]),
-                  const Divider(height: 32),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
-                  ),
-                ],
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    decoration: const BoxDecoration(
+      border: Border(bottom: BorderSide(color: AppColors.borderLight)),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                row.code,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace'),
               ),
-            ),
+              Text(row.title, style: const TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(height: 2),
+              Text(
+                '${num0(row.units)} units • Midterm ${row.midterm} • Final ${row.grade} • ${row.instructor}',
+                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+            ],
           ),
         ),
-      );
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              row.grade,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
+            ),
+            const SizedBox(height: 4),
+            Pill(row.remark, color: row.passed ? AppColors.success : AppColors.danger, icon: row.passed ? Icons.check_circle : null),
+          ],
+        ),
+        const SizedBox(width: 8),
+        OutlinedButton(onPressed: () => _showDetail(row), child: const Text('Details')),
+      ],
+    ),
+  );
 
-  Widget _figure(String label, String value) => Column(children: [
-        Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 11)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-      ]);
+  void _showDetail(_GradeRow row) => showDialog<void>(
+    context: context,
+    builder: (context) => Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(tooltip: 'Close', onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+              ),
+              CodeBadge(row.code),
+              const SizedBox(height: 8),
+              Text(
+                row.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              Text(row.instructor, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                decoration: BoxDecoration(color: AppColors.blue50, borderRadius: BorderRadius.circular(16)),
+                child: Column(
+                  children: [
+                    const Text('FINAL NUMERICAL GRADE', style: TextStyle(color: AppColors.muted, fontSize: 12, letterSpacing: 1)),
+                    Text(
+                      row.grade,
+                      style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    ),
+                    Pill(row.remark, color: AppColors.success, solid: true),
+                  ],
+                ),
+              ),
+              const Divider(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [_figure('Midterm Exam', row.midterm), _figure('Final Exam', row.grade), _figure('Credits', '${num0(row.units)} Units')],
+              ),
+              const Divider(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _figure(String label, String value) => Column(
+    children: [
+      Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+      Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+    ],
+  );
 
   void _showTranscript(String term, List<_GradeRow> rows, num units, String gpa, String passText, Color passColor, Map<String, dynamic>? profile) {
     final user = context.read<Session>().user;
@@ -275,7 +326,9 @@ class _StudentGradesPageState extends State<StudentGradesPage> with ApiLoader {
       sections: [
         DocSection(
           headers: const ['Subject Code', 'Subject Title', 'Units', 'Final Grade', 'Remarks', 'Professor'],
-          rows: [for (final r in rows) [r.code, r.title, num0(r.units), r.grade, r.remark, r.instructor]],
+          rows: [
+            for (final r in rows) [r.code, r.title, num0(r.units), r.grade, r.remark, r.instructor],
+          ],
           footer: ['', 'Cumulative Term GPA:', num0(units), gpa, passText, ''],
         ),
       ],
@@ -288,28 +341,43 @@ class _StudentGradesPageState extends State<StudentGradesPage> with ApiLoader {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Center(child: Text('🎓', style: TextStyle(fontSize: 30))),
-          const Center(child: Text('EDUTRACK UNIVERSITY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, letterSpacing: 1))),
           const Center(
-            child: Text('Office of the University Registrar • Academic Records Division',
-                textAlign: TextAlign.center, style: TextStyle(color: AppColors.muted, fontSize: 12)),
+            child: Text('EDUTRACK UNIVERSITY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, letterSpacing: 1)),
+          ),
+          const Center(
+            child: Text(
+              'Office of the University Registrar • Academic Records Division',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
           ),
           const SizedBox(height: 6),
           const Center(child: CodeBadge('OFFICIAL TRANSCRIPT OF RECORDS')),
           const Divider(height: 28),
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: AppColors.light, border: Border.all(color: AppColors.borderLight), borderRadius: BorderRadius.circular(10)),
-            child: ResponsiveGrid(minItemWidth: 240, spacing: 6, children: [
-              kvText('Student Name', user?.name ?? ''),
-              kvText('Student ID', user?.studentId ?? ''),
-              kvText('Degree Program', program),
-              kvText('Year & Section', yearSection),
-              kvText('Academic Term', term),
-              Row(children: [
-                const Text('Academic Status: ', style: TextStyle(color: AppColors.muted, fontSize: 13)),
-                Pill('${profile?['academicStatus'] ?? '—'}', color: AppColors.muted, solid: true),
-              ]),
-            ]),
+            decoration: BoxDecoration(
+              color: AppColors.light,
+              border: Border.all(color: AppColors.borderLight),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: ResponsiveGrid(
+              minItemWidth: 240,
+              spacing: 6,
+              children: [
+                kvText('Student Name', user?.name ?? ''),
+                kvText('Student ID', user?.studentId ?? ''),
+                kvText('Degree Program', program),
+                kvText('Year & Section', yearSection),
+                kvText('Academic Term', term),
+                Row(
+                  children: [
+                    const Text('Academic Status: ', style: TextStyle(color: AppColors.muted, fontSize: 13)),
+                    Pill('${profile?['academicStatus'] ?? '—'}', color: AppColors.muted, solid: true),
+                  ],
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           SingleChildScrollView(
@@ -327,30 +395,50 @@ class _StudentGradesPageState extends State<StudentGradesPage> with ApiLoader {
               ],
               rows: [
                 for (final r in rows)
-                  DataRow(cells: [
-                    DataCell(Text(r.code, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace'))),
-                    DataCell(Text(r.title)),
-                    DataCell(Text(num0(r.units))),
-                    DataCell(Text(r.grade, style: const TextStyle(fontWeight: FontWeight.bold))),
-                    DataCell(Text(r.remark, style: TextStyle(fontWeight: FontWeight.w600, color: r.passed ? AppColors.success : AppColors.danger))),
-                    DataCell(Text(r.instructor)),
-                  ]),
-                DataRow(cells: [
-                  const DataCell(Text('')),
-                  const DataCell(Text('Cumulative Term GPA:', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataCell(Text(num0(units), style: const TextStyle(fontWeight: FontWeight.bold))),
-                  DataCell(Text(gpa, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary))),
-                  DataCell(Text(passText, style: TextStyle(color: passColor, fontSize: 12))),
-                  const DataCell(Text('')),
-                ]),
+                  DataRow(
+                    cells: [
+                      DataCell(
+                        Text(
+                          r.code,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                        ),
+                      ),
+                      DataCell(Text(r.title)),
+                      DataCell(Text(num0(r.units))),
+                      DataCell(Text(r.grade, style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(
+                        Text(
+                          r.remark,
+                          style: TextStyle(fontWeight: FontWeight.w600, color: r.passed ? AppColors.success : AppColors.danger),
+                        ),
+                      ),
+                      DataCell(Text(r.instructor)),
+                    ],
+                  ),
+                DataRow(
+                  cells: [
+                    const DataCell(Text('')),
+                    const DataCell(Text('Cumulative Term GPA:', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataCell(Text(num0(units), style: const TextStyle(fontWeight: FontWeight.bold))),
+                    DataCell(
+                      Text(
+                        gpa,
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                      ),
+                    ),
+                    DataCell(Text(passText, style: TextStyle(color: passColor, fontSize: 12))),
+                    const DataCell(Text('')),
+                  ],
+                ),
               ],
             ),
           ),
           const SizedBox(height: 28),
-          Wrap(alignment: WrapAlignment.spaceBetween, runSpacing: 16, children: [
-            signatureLine(user?.name ?? '', "Student's Signature"),
-            signatureLine('', 'University Registrar'),
-          ]),
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            runSpacing: 16,
+            children: [signatureLine(user?.name ?? '', "Student's Signature"), signatureLine('', 'University Registrar')],
+          ),
         ],
       ),
       actions: (context) => [

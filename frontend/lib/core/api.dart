@@ -56,26 +56,31 @@ class TokenStore {
 /// user out everywhere.
 class ApiClient {
   ApiClient(this.tokens, {String? baseUrl, Dio? dio})
-      : dio = dio ??
-            Dio(BaseOptions(
+    : dio =
+          dio ??
+          Dio(
+            BaseOptions(
               baseUrl: baseUrl ?? apiUrl,
               connectTimeout: const Duration(seconds: 15),
               receiveTimeout: const Duration(seconds: 15),
               sendTimeout: const Duration(seconds: 15),
-            )) {
-    this.dio.interceptors.add(InterceptorsWrapper(
-          onRequest: (options, handler) {
-            final token = tokens.token;
-            if (token != null) options.headers['Authorization'] = 'Bearer $token';
-            handler.next(options);
-          },
-          onError: (error, handler) {
-            if (error.response?.statusCode == 401 && !error.requestOptions.path.contains('/auth/login')) {
-              onUnauthorized?.call();
-            }
-            handler.next(error);
-          },
-        ));
+            ),
+          ) {
+    this.dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final token = tokens.token;
+          if (token != null) options.headers['Authorization'] = 'Bearer $token';
+          handler.next(options);
+        },
+        onError: (error, handler) {
+          if (error.response?.statusCode == 401 && !error.requestOptions.path.contains('/auth/login')) {
+            onUnauthorized?.call();
+          }
+          handler.next(error);
+        },
+      ),
+    );
   }
 
   final TokenStore tokens;
@@ -88,8 +93,11 @@ class ApiClient {
   Future<dynamic> post(String path, [Object? body]) async => (await dio.post<dynamic>(path, data: body)).data;
   Future<dynamic> put(String path, [Object? body]) async => (await dio.put<dynamic>(path, data: body)).data;
   Future<dynamic> delete(String path) async => (await dio.delete<dynamic>(path)).data;
-  Future<dynamic> request(String method, String path, [Object? body]) async =>
-      (await dio.request<dynamic>(path, data: body, options: Options(method: method.toUpperCase()))).data;
+  Future<dynamic> request(String method, String path, [Object? body]) async => (await dio.request<dynamic>(
+    path,
+    data: body,
+    options: Options(method: method.toUpperCase()),
+  )).data;
 }
 
 /// Human-readable message from an API/network error.

@@ -40,9 +40,7 @@ class _LoginPageState extends State<LoginPage> {
       _error = '';
       _loading = true;
     });
-    final error = await context
-        .read<Session>()
-        .login(_identifier.text.trim(), _password.text, _role, remember: _rememberMe);
+    final error = await context.read<Session>().login(_identifier.text.trim(), _password.text, _role, remember: _rememberMe);
     // On success the router opens the dashboard for the account's role.
     if (!mounted || error == null) return;
     setState(() {
@@ -52,9 +50,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _selectRole(String role) => setState(() {
-        _role = role;
-        _error = '';
-      });
+    _role = role;
+    _error = '';
+  });
 
   void _fillDemo(String role) {
     final account = demoAccounts![role]!;
@@ -77,19 +75,28 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             const Center(child: AuthIcon(Icons.school)),
             const SizedBox(height: 14),
-            const Text('EduTrack SIS', textAlign: TextAlign.center, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const Text(
+              'EduTrack SIS',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 4),
-            const Text('Student Information & Management Portal',
-                textAlign: TextAlign.center, style: TextStyle(color: AppColors.slate400, fontSize: 13)),
+            const Text(
+              'Student Information & Management Portal',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.slate400, fontSize: 13),
+            ),
             const SizedBox(height: 22),
             // Role switcher tabs
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(color: AppColors.slate900, borderRadius: BorderRadius.circular(10)),
-              child: Row(children: [
-                _RoleTab(label: 'Student', icon: Icons.school, selected: student, onTap: () => _selectRole('student')),
-                _RoleTab(label: 'Administrator', icon: Icons.shield, selected: !student, onTap: () => _selectRole('admin')),
-              ]),
+              child: Row(
+                children: [
+                  _RoleTab(label: 'Student', icon: Icons.school, selected: student, onTap: () => _selectRole('student')),
+                  _RoleTab(label: 'Administrator', icon: Icons.shield, selected: !student, onTap: () => _selectRole('admin')),
+                ],
+              ),
             ),
             const SizedBox(height: 22),
             if (_error.isNotEmpty) DarkError(_error),
@@ -148,10 +155,7 @@ class _LoginPageState extends State<LoginPage> {
               ],
             ),
             const SizedBox(height: 16),
-            WideButton(
-              label: _loading ? 'Authenticating...' : 'Sign In',
-              onPressed: _loading ? null : _submit,
-            ),
+            WideButton(label: _loading ? 'Authenticating...' : 'Sign In', onPressed: _loading ? null : _submit),
             const SizedBox(height: 16),
             const Divider(color: Color(0x406C757D)),
             const SizedBox(height: 8),
@@ -162,8 +166,10 @@ class _LoginPageState extends State<LoginPage> {
                   const Text('New student? ', style: TextStyle(color: AppColors.slate400, fontSize: 13)),
                   GestureDetector(
                     onTap: () => context.push('/register'),
-                    child: const Text('Create an Account',
-                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
+                    child: const Text(
+                      'Create an Account',
+                      style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
                   ),
                 ],
               )
@@ -189,17 +195,28 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(children: [
-                      Icon(Icons.bolt, size: 16, color: AppColors.warning),
-                      SizedBox(width: 4),
-                      Text('Quick Demo Fill', style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold, fontSize: 13)),
-                    ]),
+                    const Row(
+                      children: [
+                        Icon(Icons.bolt, size: 16, color: AppColors.warning),
+                        SizedBox(width: 4),
+                        Text(
+                          'Quick Demo Fill',
+                          style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 8),
-                    Row(children: [
-                      Expanded(child: _DemoButton(label: 'Demo Student', icon: Icons.school, onTap: () => _fillDemo('student'))),
-                      const SizedBox(width: 8),
-                      Expanded(child: _DemoButton(label: 'Demo Admin', icon: Icons.shield, onTap: () => _fillDemo('admin'))),
-                    ]),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _DemoButton(label: 'Demo Student', icon: Icons.school, onTap: () => _fillDemo('student')),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _DemoButton(label: 'Demo Admin', icon: Icons.shield, onTap: () => _fillDemo('admin')),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -220,38 +237,36 @@ class _RoleTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Semantics(
-          button: true,
-          selected: selected,
-          child: Material(
-            color: selected ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, size: 16, color: selected ? Colors.white : AppColors.slate400),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(label,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: selected ? Colors.white : AppColors.slate400,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          )),
-                    ),
-                  ],
+    child: Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? AppColors.primary : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 16, color: selected ? Colors.white : AppColors.slate400),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: selected ? Colors.white : AppColors.slate400, fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _DemoButton extends StatelessWidget {
@@ -262,13 +277,13 @@ class _DemoButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 14),
-        label: Text(label, style: const TextStyle(fontSize: 12)),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFFF8F9FA),
-          side: const BorderSide(color: Color(0xFFF8F9FA)),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-        ),
-      );
+    onPressed: onTap,
+    icon: Icon(icon, size: 14),
+    label: Text(label, style: const TextStyle(fontSize: 12)),
+    style: OutlinedButton.styleFrom(
+      foregroundColor: const Color(0xFFF8F9FA),
+      side: const BorderSide(color: Color(0xFFF8F9FA)),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+    ),
+  );
 }

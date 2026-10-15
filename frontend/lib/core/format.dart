@@ -2,16 +2,8 @@ import 'package:intl/intl.dart';
 
 // Shared academic helpers (frontend/src/services/academic.js, admin/src/lib/domain.ts).
 
-const programNames = {
-  'BSIT': 'BS Information Technology',
-  'BSBA': 'BS Business Administration',
-  'BSEd': 'Bachelor of Secondary Education',
-};
-const departments = {
-  'BSIT': 'College of Computer Studies',
-  'BSBA': 'College of Business Administration',
-  'BSEd': 'College of Education',
-};
+const programNames = {'BSIT': 'BS Information Technology', 'BSBA': 'BS Business Administration', 'BSEd': 'Bachelor of Secondary Education'};
+const departments = {'BSIT': 'College of Computer Studies', 'BSBA': 'College of Business Administration', 'BSEd': 'College of Education'};
 String programName(String? code) => programNames[code] ?? ((code == null || code.isEmpty) ? '—' : code);
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -70,21 +62,12 @@ GradeSummary gradeSummary(List<dynamic> grades) {
   final complete = grades.where((g) => g['finalGrade'] is num).toList();
   final num units = complete.fold<num>(0, (sum, g) => sum + (g['units'] as num));
   final num earned = complete.where((g) => (g['finalGrade'] as num) <= 3).fold<num>(0, (sum, g) => sum + (g['units'] as num));
-  final gpa = units > 0
-      ? complete.fold<num>(0, (sum, g) => sum + (g['finalGrade'] as num) * (g['units'] as num)) / units
-      : null;
+  final gpa = units > 0 ? complete.fold<num>(0, (sum, g) => sum + (g['finalGrade'] as num) * (g['units'] as num)) / units : null;
   return GradeSummary(gpa?.toDouble(), units, earned, complete.length);
 }
 
 /// "Juan Dela Cruz" -> "JD"
-String initials(String name) => name
-    .trim()
-    .split(RegExp(r'\s+'))
-    .where((p) => p.isNotEmpty)
-    .map((p) => p[0])
-    .take(2)
-    .join()
-    .toUpperCase();
+String initials(String name) => name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).map((p) => p[0]).take(2).join().toUpperCase();
 
 /// "Monday" -> "Mon"
 String shortDay(String day) => day.length >= 3 ? day.substring(0, 3) : day;

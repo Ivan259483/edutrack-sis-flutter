@@ -6,10 +6,10 @@ import '../../core/session.dart';
 
 /// /admin screens (built after the student side).
 GoRoute adminRoutes() => GoRoute(
-      path: '/admin',
-      builder: (context, state) => Scaffold(
-        body: Center(
-          child: FilledButton(onPressed: () => context.read<Session>().logout(), child: const Text('Sign out')),
-        ),
-      ),
-    );
+  path: '/admin',
+  builder: (context, state) => Scaffold(
+    body: Center(
+      child: FilledButton(onPressed: () => context.read<Session>().logout(), child: const Text('Sign out')),
+    ),
+  ),
+);

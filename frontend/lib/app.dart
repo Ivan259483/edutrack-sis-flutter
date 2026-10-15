@@ -37,19 +37,14 @@ class _EduTrackAppState extends State<EduTrackApp> {
 
   @override
   Widget build(BuildContext context) => MultiProvider(
-        providers: [
-          Provider.value(value: _api),
-          ChangeNotifierProvider.value(value: _session),
-          ChangeNotifierProvider.value(value: _adminStore),
-        ],
-        child: AppRouterScope(
-          session: _session,
-          builder: (context, router) => MaterialApp.router(
-            title: 'EduTrack SIS',
-            debugShowCheckedModeBanner: false,
-            theme: studentTheme,
-            routerConfig: router,
-          ),
-        ),
-      );
+    providers: [
+      Provider.value(value: _api),
+      ChangeNotifierProvider.value(value: _session),
+      ChangeNotifierProvider.value(value: _adminStore),
+    ],
+    child: AppRouterScope(
+      session: _session,
+      builder: (context, router) => MaterialApp.router(title: 'EduTrack SIS', debugShowCheckedModeBanner: false, theme: studentTheme, routerConfig: router),
+    ),
+  );
 }

@@ -10,20 +10,16 @@ class Loading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 48),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.primary),
-            ),
-            const SizedBox(width: 10),
-            Text(label, style: const TextStyle(color: AppColors.muted)),
-          ],
-        ),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 48),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.primary)),
+        const SizedBox(width: 10),
+        Text(label, style: const TextStyle(color: AppColors.muted)),
+      ],
+    ),
+  );
 }
 
 class LoadError extends StatelessWidget {
@@ -33,24 +29,29 @@ class LoadError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8D7DA),
-          border: Border.all(color: const Color(0xFFF1AEB5)),
-          borderRadius: BorderRadius.circular(16),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF8D7DA),
+      border: Border.all(color: const Color(0xFFF1AEB5)),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(message, style: const TextStyle(color: Color(0xFF58151C))),
         ),
-        child: Row(
-          children: [
-            Expanded(child: Text(message, style: const TextStyle(color: Color(0xFF58151C)))),
-            if (onRetry != null)
-              OutlinedButton(
-                onPressed: onRetry,
-                style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger, side: const BorderSide(color: AppColors.danger)),
-                child: const Text('Try again'),
-              ),
-          ],
-        ),
-      );
+        if (onRetry != null)
+          OutlinedButton(
+            onPressed: onRetry,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.danger,
+              side: const BorderSide(color: AppColors.danger),
+            ),
+            child: const Text('Try again'),
+          ),
+      ],
+    ),
+  );
 }
 
 class Empty extends StatelessWidget {
@@ -60,15 +61,19 @@ class Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
-        child: Column(
-          children: [
-            if (icon != null) Icon(icon, size: 28, color: AppColors.muted),
-            if (icon != null) const SizedBox(height: 8),
-            Text(text, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+    child: Column(
+      children: [
+        if (icon != null) Icon(icon, size: 28, color: AppColors.muted),
+        if (icon != null) const SizedBox(height: 8),
+        Text(
+          text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.muted, fontSize: 13),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 /// Colored alert box (Bootstrap .alert).
@@ -89,7 +94,11 @@ class AlertBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(color: bg, border: Border.all(color: border), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: bg,
+        border: Border.all(color: border),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Text(message, style: TextStyle(color: fg, fontSize: 13)),
     );
   }
@@ -106,9 +115,9 @@ class Panel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        color: color,
-        child: Padding(padding: padding, child: child),
-      );
+    color: color,
+    child: Padding(padding: padding, child: child),
+  );
 }
 
 /// Card header with an icon and title, separated by a line.
@@ -122,27 +131,23 @@ class PanelTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Row(
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 18, color: iconColor ?? Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 8),
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      children: [
+        if (icon != null) ...[Icon(icon, size: 18, color: iconColor ?? Theme.of(context).colorScheme.primary), const SizedBox(width: 8)],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              if (subtitle != null) Text(subtitle!, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
             ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  if (subtitle != null)
-                    Text(subtitle!, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-                ],
-              ),
-            ),
-            ?trailing,
-          ],
+          ),
         ),
-      );
+        ?trailing,
+      ],
+    ),
+  );
 }
 
 /// Label on the left, value on the right, with a hairline below.
@@ -155,54 +160,76 @@ class InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: last ? null : const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFF1F3F5)))),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 13))),
-            const SizedBox(width: 12),
-            Flexible(
-              flex: 2,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: valueWidget ??
-                    Text(value, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    decoration: last
+        ? null
+        : const BoxDecoration(
+            border: Border(bottom: BorderSide(color: Color(0xFFF1F3F5))),
+          ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
         ),
-      );
+        const SizedBox(width: 12),
+        Flexible(
+          flex: 2,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child:
+                valueWidget ??
+                Text(
+                  value,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Pill badge with a tinted background.
 class Pill extends StatelessWidget {
-  const Pill(this.text, {super.key, required this.color, this.solid = false, this.icon, this.fontSize = 11});
+  const Pill(this.text, {super.key, required this.color, this.solid = false, this.icon, this.fontSize = 11, this.dot = false});
   final String text;
   final Color color;
   final bool solid;
   final IconData? icon;
   final double fontSize;
 
+  /// Leading status dot (drawn, so it renders the same with every font).
+  final bool dot;
+
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: solid ? color : color.withValues(alpha: 0.1),
-          border: solid ? null : Border.all(color: color.withValues(alpha: 0.25)),
-          borderRadius: BorderRadius.circular(999),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: solid ? color : color.withValues(alpha: 0.1),
+      border: solid ? null : Border.all(color: color.withValues(alpha: 0.25)),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[Icon(icon, size: fontSize, color: solid ? Colors.white : color), const SizedBox(width: 4)],
+        if (dot) ...[
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: solid ? (_isLight(color) ? AppColors.dark : Colors.white) : color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+        ],
+        Text(
+          text,
+          style: TextStyle(color: solid ? (_isLight(color) ? AppColors.dark : Colors.white) : color, fontSize: fontSize, fontWeight: FontWeight.w600),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[Icon(icon, size: fontSize, color: solid ? Colors.white : color), const SizedBox(width: 4)],
-            Text(
-              text,
-              style: TextStyle(color: solid ? (_isLight(color) ? AppColors.dark : Colors.white) : color, fontSize: fontSize, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 
   static bool _isLight(Color c) => c.computeLuminance() > 0.6;
 }
@@ -215,10 +242,13 @@ class CodeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
-        child: Text(text, style: const TextStyle(color: Colors.white, fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.bold)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
+    child: Text(
+      text,
+      style: const TextStyle(color: Colors.white, fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.bold),
+    ),
+  );
 }
 
 /// KPI tile: colored icon square, small label, big value.
@@ -243,40 +273,39 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        color: dark ? AppColors.slate800 : Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: dark ? BorderSide(color: AppColors.slate600.withValues(alpha: 0.4)) : BorderSide.none,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(10)),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label, style: TextStyle(color: dark ? AppColors.slate400 : AppColors.muted, fontSize: 12)),
-                    DefaultTextStyle.merge(
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: dark ? Colors.white : AppColors.dark),
-                      child: value,
-                    ),
-                    if (caption != null)
-                      Text(caption!, style: TextStyle(color: dark ? AppColors.slate400 : AppColors.muted, fontSize: 11)),
-                  ],
-                ),
-              ),
-            ],
+    color: dark ? AppColors.slate800 : Colors.white,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+      side: dark ? BorderSide(color: AppColors.slate600.withValues(alpha: 0.4)) : BorderSide.none,
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: color, size: 20),
           ),
-        ),
-      );
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(color: dark ? AppColors.slate400 : AppColors.muted, fontSize: 12)),
+                DefaultTextStyle.merge(
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: dark ? Colors.white : AppColors.dark),
+                  child: value,
+                ),
+                if (caption != null) Text(caption!, style: TextStyle(color: dark ? AppColors.slate400 : AppColors.muted, fontSize: 11)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Lays children out in [columns] equal columns on wide screens and one
@@ -288,32 +317,36 @@ class ResponsiveGrid extends StatelessWidget {
   final double spacing;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(builder: (context, constraints) {
-        final columns = (constraints.maxWidth / minItemWidth).floor().clamp(1, children.length.clamp(1, 4));
-        final width = (constraints.maxWidth - spacing * (columns - 1)) / columns;
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: [for (final child in children) SizedBox(width: width, child: child)],
-        );
-      });
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final columns = (constraints.maxWidth / minItemWidth).floor().clamp(1, children.length.clamp(1, 4));
+      final width = (constraints.maxWidth - spacing * (columns - 1)) / columns;
+      return Wrap(
+        spacing: spacing,
+        runSpacing: spacing,
+        children: [for (final child in children) SizedBox(width: width, child: child)],
+      );
+    },
+  );
 }
 
 /// Shows a short message at the bottom of the screen (the web's toasts).
 void showToast(BuildContext context, String message, {bool error = false, String? description}) {
   final messenger = ScaffoldMessenger.maybeOf(context);
   messenger?.hideCurrentSnackBar();
-  messenger?.showSnackBar(SnackBar(
-    backgroundColor: error ? AppColors.danger : AppColors.slate800,
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(message, style: const TextStyle(fontWeight: FontWeight.w600)),
-        if (description != null) Text(description, style: const TextStyle(fontSize: 12)),
-      ],
+  messenger?.showSnackBar(
+    SnackBar(
+      backgroundColor: error ? AppColors.danger : AppColors.slate800,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(message, style: const TextStyle(fontWeight: FontWeight.w600)),
+          if (description != null) Text(description, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
     ),
-  ));
+  );
 }
 
 /// Yes/no confirmation dialog (window.confirm / AlertDialog).
@@ -343,7 +376,13 @@ Future<bool> confirmDialog(
 }
 
 /// Full-screen-on-phone dialog with a title bar and close button.
-Future<T?> showSheetDialog<T>(BuildContext context, {required String title, required WidgetBuilder builder, List<Widget> Function(BuildContext)? actions, Widget? titleWidget}) {
+Future<T?> showSheetDialog<T>(
+  BuildContext context, {
+  required String title,
+  required WidgetBuilder builder,
+  List<Widget> Function(BuildContext)? actions,
+  Widget? titleWidget,
+}) {
   return showDialog<T>(
     context: context,
     builder: (context) {
@@ -360,13 +399,17 @@ Future<T?> showSheetDialog<T>(BuildContext context, {required String title, requ
                 padding: const EdgeInsets.fromLTRB(20, 12, 8, 8),
                 child: Row(
                   children: [
-                    Expanded(child: titleWidget ?? Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+                    Expanded(
+                      child: titleWidget ?? Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
                     IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close), tooltip: 'Close'),
                   ],
                 ),
               ),
               const Divider(height: 1),
-              Flexible(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: builder(context))),
+              Flexible(
+                child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: builder(context)),
+              ),
               if (actions != null) ...[
                 const Divider(height: 1),
                 Padding(
@@ -380,4 +423,56 @@ Future<T?> showSheetDialog<T>(BuildContext context, {required String title, requ
       );
     },
   );
+}
+
+/// Rounded box with a thick colored left edge (the web's `border-left`
+/// accent). Flutter can't round a border whose sides differ in color, so the
+/// accent is drawn as a strip inside a clipped, uniformly bordered box.
+class AccentBox extends StatelessWidget {
+  const AccentBox({
+    super.key,
+    required this.accent,
+    required this.child,
+    this.accentWidth = 4,
+    this.color = Colors.white,
+    this.borderColor = AppColors.borderLight,
+    this.radius = 10,
+    this.padding = const EdgeInsets.all(12),
+    this.margin,
+    this.fillHeight = false,
+  });
+  final Color accent;
+  final Widget child;
+  final double accentWidth;
+  final Color color;
+  final Color borderColor;
+  final double radius;
+  final EdgeInsets padding;
+  final EdgeInsets? margin;
+
+  /// True when the box already has a fixed height (e.g. positioned in a grid).
+  final bool fillHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(width: accentWidth, color: accent),
+        Expanded(
+          child: Padding(padding: padding, child: child),
+        ),
+      ],
+    );
+    return Container(
+      margin: margin,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: color,
+        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: fillHeight ? row : IntrinsicHeight(child: row),
+    );
+  }
 }
