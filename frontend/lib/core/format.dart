@@ -15,6 +15,10 @@ String todayName() => DateFormat('EEEE').format(manilaNow());
 /// "YYYY-MM-DD" in Manila (admin `today()`).
 String todayIso() => DateFormat('yyyy-MM-dd').format(manilaNow());
 
+/// Current UTC timestamp with milliseconds, like JavaScript's
+/// `new Date().toISOString()` ("2026-10-15T09:33:20.123Z").
+String nowIso() => '${DateTime.now().toUtc().toIso8601String().substring(0, 23)}Z';
+
 /// Parses the API's dates: "YYYY-MM-DD" (a Manila calendar day), ISO timestamps,
 /// or "YYYY-MM-DD HH:mm" (Manila time). Returns the moment shifted to Manila
 /// wall-clock fields, or null.

@@ -100,23 +100,26 @@ class _StudentGradesPageState extends State<StudentGradesPage> with ApiLoader {
                     style: TextStyle(color: AppColors.muted, fontSize: 13, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(width: 8),
-                  SizedBox(
-                    width: 240,
-                    child: DropdownButtonFormField<String>(
-                      key: ValueKey(selectedTerm),
-                      initialValue: selectedTerm,
-                      isExpanded: true,
-                      decoration: const InputDecoration(fillColor: AppColors.light),
-                      items: terms.isEmpty
-                          ? [DropdownMenuItem(value: selectedTerm, child: Text(selectedTerm))]
-                          : [
-                              for (final (i, t) in terms.indexed)
-                                DropdownMenuItem(
-                                  value: t,
-                                  child: Text('$t${i == 0 ? ' (Latest)' : ''}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                                ),
-                            ],
-                      onChanged: (v) => setState(() => _term = v ?? ''),
+                  // Up to 240 wide; narrower on small phones.
+                  Flexible(
+                    child: SizedBox(
+                      width: 240,
+                      child: DropdownButtonFormField<String>(
+                        key: ValueKey(selectedTerm),
+                        initialValue: selectedTerm,
+                        isExpanded: true,
+                        decoration: const InputDecoration(fillColor: AppColors.light),
+                        items: terms.isEmpty
+                            ? [DropdownMenuItem(value: selectedTerm, child: Text(selectedTerm))]
+                            : [
+                                for (final (i, t) in terms.indexed)
+                                  DropdownMenuItem(
+                                    value: t,
+                                    child: Text('$t${i == 0 ? ' (Latest)' : ''}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  ),
+                              ],
+                        onChanged: (v) => setState(() => _term = v ?? ''),
+                      ),
                     ),
                   ),
                 ],
