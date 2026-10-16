@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
+import '../../core/validation.dart';
 import '../../widgets/common.dart';
 import '../../widgets/loader.dart';
 import 'student_shell.dart';
@@ -11,10 +12,11 @@ const ticketCategories = ['Enrollment', 'Grades', 'Technical', 'General'];
 const ticketStatusColors = {'Open': AppColors.danger, 'In Progress': AppColors.warning, 'Resolved': AppColors.success};
 
 /// Same rules as the web form.
-Map<String, String> validateTicket(String subject, String message) => {
-  if (subject.trim().length < 5) 'subject': 'Subject must be at least 5 characters.',
-  if (message.trim().length < 10) 'message': 'Please describe your concern (at least 10 characters).',
-};
+/// Same limits as the API (portalTicketRules) and the web form.
+Map<String, String> validateTicket(String subject, String message) => onlyErrors({
+  'subject': lengthBetween(subject, 'Subject', 5, 200),
+  'message': lengthBetween(message, 'Message', 10, 5000),
+});
 
 /// Students open support tickets here; the registrar answers them in the
 /// admin helpdesk (frontend/src/pages/StudentSupport.jsx).
@@ -33,7 +35,9 @@ class _StudentSupportPageState extends State<StudentSupportPage> with ApiLoader 
   final _subject = TextEditingController();
   final _message = TextEditingController();
   final _reply = TextEditingController();
-  bool _touched = false;
+  // Fields left (blur) or submitted show their message; the API's messages too.
+  final Set<String> _touched = {};
+  Map<String, String> _serverErrors = const {};
   bool _saving = false;
   String _error = '';
 
@@ -53,7 +57,8 @@ class _StudentSupportPageState extends State<StudentSupportPage> with ApiLoader 
   void _replaceTicket(Map<String, dynamic> ticket) => _tickets = [ticket, ..._tickets.where((t) => t['id'] != ticket['id'])];
 
   Future<void> _create() async {
-    setState(() => _touched = true);
+    if (_saving) return; // no double submits
+    setState(() => _touched.addAll(['subject', 'message']));
     if (validateTicket(_subject.text, _message.text).isNotEmpty) return;
     setState(() {
       _saving = true;
@@ -66,16 +71,17 @@ class _StudentSupportPageState extends State<StudentSupportPage> with ApiLoader 
       _subject.clear();
       _message.clear();
       _category = 'General';
-      _touched = false;
+      _touched.clear();
       _showForm = false;
     } catch (error) {
-      _error = apiErrorMessage(error);
+      _serverErrors = apiFieldErrors(error);
+      if (_serverErrors.isEmpty) _error = apiErrorMessage(error);
     }
     if (mounted) setState(() => _saving = false);
   }
 
   Future<void> _sendReply() async {
-    if (_reply.text.trim().isEmpty) return;
+    if (_reply.text.trim().isEmpty || _saving) return;
     setState(() {
       _saving = true;
       _error = '';
@@ -93,7 +99,8 @@ class _StudentSupportPageState extends State<StudentSupportPage> with ApiLoader 
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 1000;
-    final errors = _touched ? validateTicket(_subject.text, _message.text) : const <String, String>{};
+    final all = {...validateTicket(_subject.text, _message.text), ..._serverErrors};
+    final errors = {for (final e in all.entries) if (_touched.contains(e.key)) e.key: e.value};
     final list = _ticketList();
     final conversation = _conversation();
     return StudentPage(
@@ -154,22 +161,28 @@ class _StudentSupportPageState extends State<StudentSupportPage> with ApiLoader 
                   onChanged: (v) => setState(() => _category = v!),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  key: const Key('ticket-subject'),
-                  controller: _subject,
-                  maxLength: 200,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(labelText: 'Subject', errorText: errors['subject'], counterText: ''),
+                Focus(
+                  onFocusChange: (focused) => focused ? null : setState(() => _touched.add('subject')),
+                  child: TextField(
+                    key: const Key('ticket-subject'),
+                    controller: _subject,
+                    maxLength: 200,
+                    onChanged: (_) => setState(() => _serverErrors = {..._serverErrors}..remove('subject')),
+                    decoration: InputDecoration(labelText: 'Subject', errorText: errors['subject'], counterText: ''),
+                  ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  key: const Key('ticket-message'),
-                  controller: _message,
-                  minLines: 4,
-                  maxLines: 8,
-                  maxLength: 5000,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(labelText: 'Message', errorText: errors['message'], counterText: '', alignLabelWithHint: true),
+                Focus(
+                  onFocusChange: (focused) => focused ? null : setState(() => _touched.add('message')),
+                  child: TextField(
+                    key: const Key('ticket-message'),
+                    controller: _message,
+                    minLines: 4,
+                    maxLines: 8,
+                    maxLength: 5000,
+                    onChanged: (_) => setState(() => _serverErrors = {..._serverErrors}..remove('message')),
+                    decoration: InputDecoration(labelText: 'Message', errorText: errors['message'], counterText: '', alignLabelWithHint: true),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Wrap(

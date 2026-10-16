@@ -8,13 +8,12 @@ import 'package:provider/provider.dart';
 import '../../core/api.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
+import '../../core/validation.dart';
+import '../../widgets/password_checklist.dart';
 import 'auth_card.dart';
 
-// Same rules as the web form (frontend/src/pages/RegisterPage.jsx).
-final _emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$');
-bool validName(String v) => v.trim().length >= 2;
-bool validEmail(String v) => _emailRegex.hasMatch(v.trim());
-bool validPassword(String v) => v.length >= 8 && RegExp('[A-Za-z]').hasMatch(v) && RegExp(r'\d').hasMatch(v);
+// Fields of step 1; API errors for them send the student back there.
+const _detailFields = ['firstName', 'lastName', 'email', 'password', 'confirmPassword', 'program', 'yearLevel'];
 
 const _programs = ['BS Information Technology', 'BS Business Administration', 'Bachelor of Secondary Education'];
 const _years = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
@@ -40,15 +39,26 @@ class _RegisterPageState extends State<RegisterPage> {
   final Set<String> _touched = {};
   bool _loading = false;
   String _serverError = '';
+  // Field messages returned by the API (e.g. "Email is already registered.").
+  Map<String, String> _serverErrors = const {};
+  bool _otpTouched = false;
   int _cooldown = 0;
   Timer? _timer;
 
-  bool get _firstValid => validName(_firstName.text);
-  bool get _lastValid => validName(_lastName.text);
-  bool get _emailValid => validEmail(_email.text);
-  bool get _passwordValid => validPassword(_password.text);
-  bool get _confirmValid => _confirm.text.isNotEmpty && _confirm.text == _password.text;
-  bool get _formValid => _firstValid && _lastValid && _emailValid && _passwordValid && _confirmValid;
+  // Same rules as the website and the API.
+  Map<String, String> get _errors => {
+    ...onlyErrors({
+      'firstName': personName(_firstName.text, 'First name'),
+      'lastName': personName(_lastName.text, 'Last name'),
+      'email': email(_email.text),
+      'password': strongPassword(_password.text),
+      'confirmPassword': confirmPassword(_confirm.text, _password.text),
+    }),
+    ..._serverErrors,
+  };
+  bool get _formValid => _detailFields.every((f) => !_errors.containsKey(f));
+  String? get _otpError => _serverErrors['otp'] ?? digitsCode(_otp.text, registrationCodeLength);
+  String get _emailValue => _email.text.trim().toLowerCase();
 
   ApiClient get _api => context.read<Session>().api;
 
@@ -61,9 +71,9 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  void _startCooldown() {
+  void _startCooldown([int seconds = resendSeconds]) {
     _timer?.cancel();
-    setState(() => _cooldown = 60);
+    setState(() => _cooldown = seconds);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return timer.cancel();
       setState(() => _cooldown--);
@@ -71,15 +81,38 @@ class _RegisterPageState extends State<RegisterPage> {
     });
   }
 
+  /// Shows an API error under its field (back on step 1 if it belongs there),
+  /// and counts the resend button down when the API asks to wait.
+  void _showApiError(Object error, String fallback) {
+    final retryAfter = apiRetryAfter(error);
+    if (retryAfter != null) _startCooldown(retryAfter);
+    final fields = apiFieldErrors(error);
+    setState(() {
+      _loading = false;
+      if (fields.isEmpty) {
+        _serverError = apiErrorMessage(error, fallback);
+        return;
+      }
+      _serverErrors = fields;
+      if (_detailFields.any(fields.containsKey)) {
+        _touched.addAll(_detailFields);
+        _step = 1;
+      } else {
+        _otpTouched = true;
+      }
+    });
+  }
+
   Future<void> _sendOtp() async {
+    if (_loading) return; // no double submits
     setState(() => _serverError = '');
     if (!_formValid) {
-      setState(() => _touched.addAll(['firstName', 'lastName', 'email', 'password', 'confirmPassword']));
+      setState(() => _touched.addAll(_detailFields));
       return;
     }
     setState(() => _loading = true);
     try {
-      await _api.post('/auth/send-otp', {'email': _email.text.trim()});
+      await _api.post('/auth/send-otp', {'email': _emailValue});
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -87,11 +120,7 @@ class _RegisterPageState extends State<RegisterPage> {
       });
       _startCooldown();
     } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _serverError = apiErrorMessage(error, 'Failed to send verification code. Please try again.');
-      });
+      if (mounted) _showApiError(error, 'Failed to send verification code. Please try again.');
     }
   }
 
@@ -102,33 +131,34 @@ class _RegisterPageState extends State<RegisterPage> {
       _loading = true;
     });
     try {
-      await _api.post('/auth/send-otp', {'email': _email.text.trim()});
-      if (!mounted) return;
-      setState(() => _loading = false);
-      _startCooldown();
-    } catch (error) {
+      await _api.post('/auth/send-otp', {'email': _emailValue});
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _serverError = apiErrorMessage(error, 'Failed to resend code. Please try again.');
+        _serverErrors = const {};
       });
+      _startCooldown();
+    } catch (error) {
+      if (mounted) _showApiError(error, 'Failed to resend code. Please try again.');
     }
   }
 
   Future<void> _verifyAndRegister() async {
-    setState(() => _serverError = '');
-    if (_otp.text.trim().length != 5) {
-      setState(() => _serverError = 'Please enter the full 5-digit verification code.');
-      return;
-    }
+    if (_loading) return;
+    setState(() {
+      _serverError = '';
+      _otpTouched = true;
+    });
+    if (_otpError != null) return;
     setState(() => _loading = true);
     try {
-      await _api.post('/auth/verify-otp', {'email': _email.text.trim(), 'otp': _otp.text.trim()});
+      await _api.post('/auth/verify-otp', {'email': _emailValue, 'otp': _otp.text.trim()});
       await _api.post('/auth/register', {
-        'firstName': _firstName.text.trim(),
-        'lastName': _lastName.text.trim(),
-        'email': _email.text.trim(),
+        'firstName': clean(_firstName.text),
+        'lastName': clean(_lastName.text),
+        'email': _emailValue,
         'password': _password.text,
+        'confirmPassword': _confirm.text,
         'program': _program,
         'yearLevel': _yearLevel,
       });
@@ -138,16 +168,12 @@ class _RegisterPageState extends State<RegisterPage> {
         _step = 3;
       });
     } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _serverError = apiErrorMessage(error, 'Verification or registration failed. Please try again.');
-      });
+      if (mounted) _showApiError(error, 'Verification or registration failed. Please try again.');
     }
   }
 
   void _changed(String field) => setState(() {
-    _touched.add(field);
+    _serverErrors = {..._serverErrors}..remove(field);
     _serverError = '';
   });
 
@@ -197,15 +223,17 @@ class _RegisterPageState extends State<RegisterPage> {
     required String name,
     required String label,
     required TextEditingController controller,
-    required bool valid,
     required String validText,
-    required String invalidText,
     String? hint,
     String? labelSuffix,
     bool obscure = false,
     TextInputType? keyboard,
+    int maxLength = 50,
+    Widget? below,
   }) {
     final touched = _touched.contains(name);
+    final error = _errors[name];
+    final valid = error == null;
     final color = !touched ? null : (valid ? AppColors.green500 : AppColors.red500);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,16 +248,18 @@ class _RegisterPageState extends State<RegisterPage> {
             controller: controller,
             obscureText: obscure,
             keyboardType: keyboard,
+            maxLength: maxLength,
             style: const TextStyle(color: Colors.white),
-            decoration: darkInput(hint: hint, borderColor: color),
+            decoration: darkInput(hint: hint, borderColor: color).copyWith(counterText: ''),
             onChanged: (_) => _changed(name),
           ),
         ),
         if (touched)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(valid ? validText : invalidText, style: TextStyle(fontSize: 11, color: color)),
+            child: Text(valid ? validText : error, style: TextStyle(fontSize: 11, color: color)),
           ),
+        ?below,
       ],
     );
   }
@@ -277,19 +307,15 @@ class _RegisterPageState extends State<RegisterPage> {
           name: 'firstName',
           label: 'First Name',
           controller: _firstName,
-          valid: _firstValid,
           hint: 'e.g. Gabriel',
           validText: 'Valid first name',
-          invalidText: 'Minimum 2 characters required',
         ),
         _field(
           name: 'lastName',
           label: 'Last Name',
           controller: _lastName,
-          valid: _lastValid,
           hint: 'e.g. Adiaton',
           validText: 'Valid last name',
-          invalidText: 'Minimum 2 characters required',
         ),
       ),
       const SizedBox(height: 14),
@@ -305,11 +331,10 @@ class _RegisterPageState extends State<RegisterPage> {
         label: 'Email Address',
         labelSuffix: '(Gmail or institutional)',
         controller: _email,
-        valid: _emailValid,
         hint: 'e.g. student@gmail.com',
         keyboard: TextInputType.emailAddress,
+        maxLength: 254,
         validText: 'Valid email format',
-        invalidText: 'Please enter a valid email address',
       ),
       const SizedBox(height: 14),
       _pair(
@@ -317,29 +342,29 @@ class _RegisterPageState extends State<RegisterPage> {
           name: 'password',
           label: 'Password',
           controller: _password,
-          valid: _passwordValid,
           obscure: true,
-          hint: 'Min 8 characters, letters & numbers',
+          hint: 'Create a strong password',
+          maxLength: 128,
           validText: 'Password meets requirements',
-          invalidText: 'At least 8 characters with a letter and a number',
+          below: PasswordChecklist(password: _password.text, dark: true),
         ),
         _field(
           name: 'confirmPassword',
           label: 'Confirm Password',
           controller: _confirm,
-          valid: _confirmValid,
           obscure: true,
           hint: 'Re-enter password',
+          maxLength: 128,
           validText: 'Passwords match',
-          invalidText: 'Passwords do not match',
         ),
       ),
       const SizedBox(height: 22),
       WideButton(
         key: const Key('register-send'),
         label: _loading ? 'Sending Verification Code...' : 'Send Verification Code to Email',
-        color: _formValid ? AppColors.blue600 : AppColors.slate700,
-        onPressed: _loading || !_formValid ? null : _sendOtp,
+        color: AppColors.blue600,
+        // Enabled even when invalid, so tapping it shows every field's message.
+        onPressed: _loading ? null : _sendOtp,
       ),
       const SizedBox(height: 14),
       Row(
@@ -368,7 +393,7 @@ class _RegisterPageState extends State<RegisterPage> {
       ),
       const SizedBox(height: 8),
       const Text(
-        'A 5-digit verification code has been dispatched to:',
+        'A $registrationCodeLength-digit verification code has been dispatched to:',
         textAlign: TextAlign.center,
         style: TextStyle(color: AppColors.slate400, fontSize: 13),
       ),
@@ -392,7 +417,7 @@ class _RegisterPageState extends State<RegisterPage> {
       ),
       const SizedBox(height: 20),
       const Text(
-        'Enter 5-Digit Verification Code',
+        'Enter $registrationCodeLength-Digit Verification Code',
         textAlign: TextAlign.center,
         style: TextStyle(color: Color(0xFFF8F9FA), fontSize: 13, fontWeight: FontWeight.w500),
       ),
@@ -401,20 +426,21 @@ class _RegisterPageState extends State<RegisterPage> {
         key: const Key('register-otp'),
         controller: _otp,
         autofocus: true,
-        maxLength: 5,
+        maxLength: registrationCodeLength,
         keyboardType: TextInputType.number,
+        autofillHints: const [AutofillHints.oneTimeCode],
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         textAlign: TextAlign.center,
         style: const TextStyle(color: Colors.white, fontSize: 28, fontFamily: 'monospace', letterSpacing: 8),
-        decoration: darkInput(hint: '00000').copyWith(counterText: ''),
-        onChanged: (_) => setState(() {}),
+        decoration: darkInput(hint: '0' * registrationCodeLength, errorText: _otpTouched ? _otpError : null).copyWith(counterText: ''),
+        onChanged: (_) => setState(() => _serverErrors = {..._serverErrors}..remove('otp')),
         onSubmitted: (_) => _verifyAndRegister(),
       ),
       const SizedBox(height: 20),
       WideButton(
         key: const Key('register-verify'),
         label: _loading ? 'Verifying & Registering...' : 'Verify Code & Complete Registration',
-        onPressed: _loading || _otp.text.length != 5 ? null : _verifyAndRegister,
+        onPressed: _loading ? null : _verifyAndRegister,
       ),
       const SizedBox(height: 12),
       const Divider(color: Color(0x406C757D)),
@@ -425,7 +451,9 @@ class _RegisterPageState extends State<RegisterPage> {
             onPressed: () => setState(() {
               _step = 1;
               _otp.clear();
+              _otpTouched = false;
               _serverError = '';
+              _serverErrors = const {};
             }),
             child: const Text('Change Email', style: TextStyle(color: AppColors.slate400, fontSize: 13)),
           ),

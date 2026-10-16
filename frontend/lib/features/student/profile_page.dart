@@ -5,13 +5,11 @@ import '../../core/api.dart';
 import '../../core/format.dart';
 import '../../core/pdf_docs.dart';
 import '../../core/theme.dart';
+import '../../core/validation.dart';
 import '../../widgets/common.dart';
 import '../../widgets/loader.dart';
+import '../../widgets/password_checklist.dart';
 import 'student_shell.dart';
-
-// Same rules as the API (backend/validators portalProfileRules) and the web form.
-final _phone = RegExp(r'^\+?[0-9][0-9 ()-]{6,24}$');
-final _email = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$');
 
 /// "Not provided" is the placeholder stored for new registrations.
 String _shown(Object? value) => (value is String && value.isNotEmpty && value != 'Not provided') ? value : '—';
@@ -299,36 +297,31 @@ class EditContactForm extends StatefulWidget {
 }
 
 const _contactFields = [
-  (name: 'contactNumber', label: 'Mobile Number', required: true, phone: true, keyboard: TextInputType.phone),
-  (name: 'personalEmail', label: 'Personal Email (optional)', required: false, phone: false, keyboard: TextInputType.emailAddress),
-  (name: 'address', label: 'Residential Address', required: true, phone: false, keyboard: TextInputType.streetAddress),
-  (name: 'emergencyContact', label: 'Emergency Contact Person', required: true, phone: false, keyboard: TextInputType.name),
-  (name: 'guardianRelationship', label: 'Relationship (optional)', required: false, phone: false, keyboard: TextInputType.text),
-  (name: 'emergencyContactNumber', label: 'Emergency Contact Number', required: true, phone: true, keyboard: TextInputType.phone),
+  (name: 'contactNumber', label: 'Mobile Number', max: 30, keyboard: TextInputType.phone),
+  (name: 'personalEmail', label: 'Personal Email (optional)', max: 254, keyboard: TextInputType.emailAddress),
+  (name: 'address', label: 'Residential Address', max: 300, keyboard: TextInputType.streetAddress),
+  (name: 'emergencyContact', label: 'Emergency Contact Person', max: 100, keyboard: TextInputType.name),
+  (name: 'guardianRelationship', label: 'Relationship (optional)', max: 60, keyboard: TextInputType.text),
+  (name: 'emergencyContactNumber', label: 'Emergency Contact Number', max: 30, keyboard: TextInputType.phone),
 ];
 
-/// Same checks as the web form (frontend/src/components/EditContactForm.jsx).
-Map<String, String> validateContact(Map<String, String> form) {
-  final errors = <String, String>{};
-  for (final field in _contactFields) {
-    if (field.required && form[field.name]!.trim().isEmpty) errors[field.name] = '${field.label} is required.';
-  }
-  for (final name in ['contactNumber', 'emergencyContactNumber']) {
-    if (!errors.containsKey(name) && !_phone.hasMatch(form[name]!.trim())) {
-      errors[name] = 'Enter a valid phone number (digits, spaces, +, - or parentheses).';
-    }
-  }
-  final personal = form['personalEmail']!.trim();
-  if (personal.isNotEmpty && !_email.hasMatch(personal)) errors['personalEmail'] = 'Enter a valid email address.';
-  if (form['address']!.trim().length > 300) errors['address'] = 'Address must be at most 300 characters.';
-  return errors;
-}
+/// Same rules as the API (portalProfileRules) and the web form (EditContactForm.jsx).
+Map<String, String> validateContact(Map<String, String> form) => onlyErrors({
+  'contactNumber': phone(form['contactNumber'], 'Mobile number'),
+  'personalEmail': form['personalEmail']!.trim().isEmpty ? null : email(form['personalEmail'], label: 'Personal email'),
+  'address': lengthBetween(form['address'], 'Address', 5, 300),
+  'emergencyContact': personName(form['emergencyContact'], 'Emergency contact', max: 100),
+  'guardianRelationship': optionalName(form['guardianRelationship'], 'Relationship'),
+  'emergencyContactNumber': phone(form['emergencyContactNumber'], 'Emergency contact number'),
+});
 
 class _EditContactFormState extends State<EditContactForm> {
   late final Map<String, TextEditingController> _controllers = {
     for (final f in _contactFields) f.name: TextEditingController(text: _shown(widget.student[f.name]) == '—' ? '' : '${widget.student[f.name]}'),
   };
-  bool _touched = false;
+  // Fields left (blur) or submitted show their message; the API's messages too.
+  final Set<String> _touched = {};
+  Map<String, String> _serverErrors = const {};
   bool _saving = false;
   String _serverError = '';
 
@@ -343,18 +336,24 @@ class _EditContactFormState extends State<EditContactForm> {
   Map<String, String> get _form => _controllers.map((k, c) => MapEntry(k, c.text));
 
   Future<void> _submit() async {
-    setState(() => _touched = true);
+    if (_saving) return; // no double submits
+    setState(() => _touched.addAll(_contactFields.map((f) => f.name)));
     if (validateContact(_form).isNotEmpty) return;
     setState(() {
       _saving = true;
       _serverError = '';
     });
     try {
-      final body = _form.map((k, v) => MapEntry(k, v.trim()));
+      final body = _form.map((k, v) => MapEntry(k, clean(v)));
       final data = await context.read<ApiClient>().put('/portal/profile', body);
       widget.onSaved(Map<String, dynamic>.from(data as Map));
     } catch (error) {
-      if (mounted) setState(() => _serverError = apiErrorMessage(error));
+      if (mounted) {
+        setState(() {
+          _serverErrors = apiFieldErrors(error);
+          _serverError = _serverErrors.isEmpty ? apiErrorMessage(error) : '';
+        });
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -362,7 +361,7 @@ class _EditContactFormState extends State<EditContactForm> {
 
   @override
   Widget build(BuildContext context) {
-    final errors = _touched ? validateContact(_form) : const <String, String>{};
+    final errors = {...validateContact(_form), ..._serverErrors};
     return Panel(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -377,13 +376,24 @@ class _EditContactFormState extends State<EditContactForm> {
             minItemWidth: 300,
             children: [
               for (final field in _contactFields)
-                TextField(
-                  key: Key('contact-${field.name}'),
-                  controller: _controllers[field.name],
-                  keyboardType: field.keyboard,
-                  maxLength: field.name == 'address' ? 300 : 120,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(labelText: field.label, errorText: errors[field.name], counterText: ''),
+                Focus(
+                  onFocusChange: (focused) {
+                    if (!focused) setState(() => _touched.add(field.name));
+                  },
+                  child: TextField(
+                    key: Key('contact-${field.name}'),
+                    controller: _controllers[field.name],
+                    keyboardType: field.keyboard,
+                    maxLength: field.max,
+                    onChanged: (_) => setState(() => _serverErrors = {..._serverErrors}..remove(field.name)),
+                    decoration: InputDecoration(
+                      labelText: field.label,
+                      hintText: field.keyboard == TextInputType.phone ? 'e.g. 0917 123 4567' : null,
+                      errorText: _touched.contains(field.name) ? errors[field.name] : null,
+                      errorMaxLines: 3,
+                      counterText: '',
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -410,19 +420,12 @@ class ChangePasswordCard extends StatefulWidget {
   State<ChangePasswordCard> createState() => _ChangePasswordCardState();
 }
 
-/// The password rule shared by registration and password changes.
-String? passwordProblem(String password, String confirm) {
-  if (password.length < 8 || !RegExp('[A-Za-z]').hasMatch(password) || !RegExp(r'\d').hasMatch(password)) {
-    return 'Use at least 8 characters with a letter and a number.';
-  }
-  if (password != confirm) return 'New passwords do not match.';
-  return null;
-}
-
 class _ChangePasswordCardState extends State<ChangePasswordCard> {
   final _current = TextEditingController();
   final _next = TextEditingController();
   final _confirm = TextEditingController();
+  final Set<String> _touched = {};
+  Map<String, String> _serverErrors = const {};
   bool _saving = false;
   (AlertType, String)? _status;
 
@@ -434,44 +437,69 @@ class _ChangePasswordCardState extends State<ChangePasswordCard> {
     super.dispose();
   }
 
+  // Same rules as register and reset (not as login).
+  Map<String, String> get _errors => {
+    ...onlyErrors({
+      'currentPassword': _current.text.isEmpty ? 'Enter your current password.' : null,
+      'password': strongPassword(_next.text),
+      'confirmPassword': confirmPassword(_confirm.text, _next.text),
+    }),
+    ..._serverErrors,
+  };
+
+  String? _shown(String field) => _touched.contains(field) ? _errors[field] : null;
+
   Future<void> _submit() async {
-    final problem = passwordProblem(_next.text, _confirm.text);
-    if (problem != null) return setState(() => _status = (AlertType.danger, problem));
+    if (_saving) return; // no double submits
+    setState(() {
+      _touched.addAll(['currentPassword', 'password', 'confirmPassword']);
+      _status = null;
+    });
+    if (_errors.isNotEmpty) return;
     setState(() => _saving = true);
+    final api = context.read<ApiClient>();
     try {
-      await context.read<ApiClient>().put('/auth/password', {'currentPassword': _current.text, 'password': _next.text});
+      final data = await api.put('/auth/password', {'currentPassword': _current.text, 'password': _next.text, 'confirmPassword': _confirm.text});
+      // The API signs out every other session and returns a new token for this one.
+      if (data is Map && data['token'] is String) await api.tokens.replace(data['token'] as String);
       _current.clear();
       _next.clear();
       _confirm.clear();
+      _touched.clear();
       _status = (AlertType.success, 'Your password has been updated.');
     } catch (error) {
-      _status = (AlertType.danger, apiErrorMessage(error));
+      _serverErrors = apiFieldErrors(error);
+      if (_serverErrors.isEmpty) _status = (AlertType.danger, apiErrorMessage(error));
     }
     if (mounted) setState(() => _saving = false);
   }
 
+  Widget _field(String name, String label, TextEditingController controller, {Widget? below}) => Focus(
+    onFocusChange: (focused) {
+      if (!focused) setState(() => _touched.add(name));
+    },
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          key: Key({'currentPassword': 'password-current', 'password': 'password-new', 'confirmPassword': 'password-confirm'}[name]!),
+          controller: controller,
+          obscureText: true,
+          maxLength: 128,
+          onChanged: (_) => setState(() => _serverErrors = {..._serverErrors}..remove(name)),
+          decoration: InputDecoration(labelText: label, errorText: _shown(name), errorMaxLines: 3, counterText: ''),
+        ),
+        ?below,
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final fields = [
-      TextField(
-        key: const Key('password-current'),
-        controller: _current,
-        obscureText: true,
-        onChanged: (_) => setState(() {}),
-        decoration: const InputDecoration(labelText: 'Current password'),
-      ),
-      TextField(
-        key: const Key('password-new'),
-        controller: _next,
-        obscureText: true,
-        decoration: const InputDecoration(labelText: 'New password'),
-      ),
-      TextField(
-        key: const Key('password-confirm'),
-        controller: _confirm,
-        obscureText: true,
-        decoration: const InputDecoration(labelText: 'Confirm new password'),
-      ),
+      _field('currentPassword', 'Current password', _current),
+      _field('password', 'New password', _next, below: PasswordChecklist(password: _next.text)),
+      _field('confirmPassword', 'Confirm new password', _confirm),
     ];
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -480,7 +508,7 @@ class _ChangePasswordCardState extends State<ChangePasswordCard> {
         if (_status != null) AlertBox(_status!.$2, type: _status!.$1),
         ResponsiveGrid(minItemWidth: widget.dense ? 600 : 240, children: fields),
         const SizedBox(height: 12),
-        FilledButton(onPressed: _saving || _current.text.isEmpty ? null : _submit, child: Text(_saving ? 'Saving…' : 'Update password')),
+        FilledButton(onPressed: _saving ? null : _submit, child: Text(_saving ? 'Saving…' : 'Update password')),
       ],
     );
     return widget.dense ? body : Panel(padding: const EdgeInsets.all(20), child: body);
