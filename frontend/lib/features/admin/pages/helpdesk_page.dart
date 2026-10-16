@@ -168,6 +168,8 @@ class _TicketDetails extends StatefulWidget {
 class _TicketDetailsState extends State<_TicketDetails> {
   final _reply = TextEditingController();
   bool _saving = false;
+  // Shown under the reply box (empty reply, or the API's reason).
+  String? _replyError;
 
   @override
   void dispose() {
@@ -193,20 +195,30 @@ class _TicketDetailsState extends State<_TicketDetails> {
     '${t['ticketNumber']} marked as In Progress.',
   );
 
+  /// Same rule as the API: 1–5000 characters.
   Future<void> _send(Map<String, dynamic> t, {required bool resolve}) async {
-    if (_reply.text.trim().isEmpty) {
-      await showProblem(context, 'Reply is empty', resolve ? 'Please enter a reply before resolving.' : 'Please enter a reply before sending.');
-      return;
-    }
-    await _run(
+    if (_saving) return; // no double submits
+    final message = _reply.text.trim();
+    final problem = message.isEmpty
+        ? 'Enter a reply before ${resolve ? 'resolving' : 'sending'}.'
+        : (message.length > 5000 ? 'Reply must be at most 5000 characters.' : null);
+    setState(() => _replyError = problem);
+    if (problem != null) return;
+    setState(() => _saving = true);
+    final ok = await runChange(
+      context,
       () => context.read<AdminStore>().save(
         AdminCollection.tickets,
-        replyToTicket(t, _reply.text, resolve: resolve),
+        replyToTicket(t, message, resolve: resolve),
         action: resolve ? 'Replied and resolved ticket' : 'Replied to ticket',
       ),
-      resolve ? 'Ticket resolved' : 'Reply saved',
-      resolve ? 'Reply saved and ${t['ticketNumber']} marked as Resolved.' : 'Reply saved to ${t['ticketNumber']}. Ticket marked as In Progress.',
+      success: resolve ? 'Ticket resolved' : 'Reply saved',
+      description: resolve ? 'Reply saved and ${t['ticketNumber']} marked as Resolved.' : 'Reply saved to ${t['ticketNumber']}. Ticket marked as In Progress.',
+      onError: (reason) => _replyError = reason,
     );
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (ok) _reply.clear();
   }
 
   @override
@@ -308,7 +320,8 @@ class _TicketDetailsState extends State<_TicketDetails> {
             minLines: 3,
             maxLines: 6,
             maxLength: 5000,
-            decoration: const InputDecoration(hintText: 'Type your reply...'),
+            onChanged: (_) => _replyError == null ? null : setState(() => _replyError = null),
+            decoration: InputDecoration(hintText: 'Type your reply...', errorText: _replyError, errorMaxLines: 3),
           ),
           const SizedBox(height: 8),
           Wrap(

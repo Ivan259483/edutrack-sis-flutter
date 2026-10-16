@@ -188,7 +188,7 @@ class _LoginPageState extends State<LoginPage> {
               ],
             ),
             const SizedBox(height: 16),
-            WideButton(label: _loading ? 'Authenticating...' : 'Sign In', onPressed: _loading ? null : _submit),
+            WideButton(key: const Key('login-submit'), label: _loading ? 'Authenticating...' : 'Sign In', onPressed: _loading ? null : _submit),
             const SizedBox(height: 16),
             const Divider(color: Color(0x406C757D)),
             const SizedBox(height: 8),

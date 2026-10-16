@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/format.dart';
 import '../../../core/theme.dart';
+import '../../../core/validation.dart' as rules;
 import '../../../widgets/common.dart';
 import '../admin_widgets.dart';
 import '../data/admin_rules.dart';
@@ -353,6 +354,9 @@ class _StudentFormState extends State<StudentForm> {
   bool _submitted = false;
   bool _saving = false;
   String _error = '';
+  // Fields left (blur) show their message before saving; the API's messages too.
+  final Set<String> _touched = {};
+  Map<String, String> _serverErrors = const {};
 
   @override
   void dispose() {
@@ -362,19 +366,38 @@ class _StudentFormState extends State<StudentForm> {
     super.dispose();
   }
 
-  Map<String, String> get _errors {
-    final errors = <String, String>{};
-    _labels.forEach((key, label) {
-      if (_form[key]!.trim().isEmpty) errors[key] = '$label is required.';
+  /// Same rules as the API (studentRules) and the web form (StudentForm.tsx).
+  Map<String, String> _errorsFor(AdminStore store) {
+    final f = _form;
+    final errors = rules.onlyErrors({
+      'studentId': rules.studentId(f['studentId']),
+      // A full name joins a first and a last name (each up to 50 characters).
+      'fullName': rules.personName(f['fullName'], 'Full name', max: 100),
+      'email': f['email']!.trim().isEmpty ? 'Email is required.' : rules.email(f['email']),
+      'contactNumber': rules.phone(f['contactNumber'], 'Contact number', allowPlaceholder: true),
+      'address': rules.lengthBetween(f['address'], 'Address', 5, 300),
+      'emergencyContact': rules.personName(f['emergencyContact'], 'Emergency contact', max: 100),
+      'emergencyContactNumber': rules.phone(f['emergencyContactNumber'], 'Emergency contact number', allowPlaceholder: true),
+      'dateEnrolled': rules.pastDate(f['dateEnrolled'], 'Date enrolled', todayIso()),
+      for (final key in ['program', 'yearLevel', 'section', 'academicStatus']) key: rules.requiredField(f[key], _labels[key]!),
     });
-    if (!errors.containsKey('email') && !emailPattern.hasMatch(_form['email']!.trim())) {
-      errors['email'] = 'Enter a valid email address, e.g. name@school.edu.';
+    // Uniqueness (case-insensitive) and the section rule, under their fields.
+    final others = store.students.where((s) => s['id'] != widget.student?['id']);
+    if (!errors.containsKey('studentId') && others.any((s) => normalize('${s['studentId']}') == normalize(f['studentId']!))) {
+      errors['studentId'] = 'Student ID is already in use.';
     }
-    return errors;
+    if (!errors.containsKey('email') && others.any((s) => normalize('${s['email']}') == normalize(f['email']!))) {
+      errors['email'] = 'Email is already registered.';
+    }
+    if (!errors.containsKey('section') && !f['section']!.startsWith('${f['program']} ${f['yearLevel']![0]}')) {
+      errors['section'] = 'Section must match the selected program and year level.';
+    }
+    return {...errors, ..._serverErrors};
   }
 
   void _update(String key, String value, List<String> sections) => setState(() {
     _form[key] = value;
+    _serverErrors = {..._serverErrors}..remove(key);
     if (key == 'program') {
       _form['yearLevel'] = yearLevelOptions.firstWhere((y) => sectionsFor(sections, value, y).isNotEmpty, orElse: () => _form['yearLevel']!);
     }
@@ -383,28 +406,26 @@ class _StudentFormState extends State<StudentForm> {
 
   Future<void> _pickDate() async {
     final current = DateTime.tryParse(_form['dateEnrolled']!) ?? manilaNow();
-    final picked = await showDatePicker(context: context, initialDate: current, firstDate: DateTime(2000), lastDate: DateTime(2100));
+    final today = manilaNow();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current.isAfter(today) ? today : current,
+      firstDate: DateTime(1990),
+      lastDate: today, // Date enrolled can't be in the future.
+    );
     if (picked != null) setState(() => _form['dateEnrolled'] = picked.toIso8601String().substring(0, 10));
   }
 
   Future<void> _save() async {
+    if (_saving) return; // no double submits
     setState(() {
       _submitted = true;
       _error = '';
     });
-    if (_errors.isNotEmpty) return;
     final store = context.read<AdminStore>();
-    final form = {for (final e in _form.entries) e.key: e.value.trim()};
-    // Uniqueness and section rules from admin/src/data/transitions.ts.
-    final others = store.students.where((s) => s['id'] != widget.student?['id']);
-    if (others.any((s) => normalize('${s['studentId']}') == normalize(form['studentId']!) || normalize('${s['email']}') == normalize(form['email']!))) {
-      setState(() => _error = 'Student ID and email must be unique.');
-      return;
-    }
-    if (!form['section']!.startsWith('${form['program']} ${form['yearLevel']![0]}')) {
-      setState(() => _error = 'Section must match the selected program and year level.');
-      return;
-    }
+    if (_errorsFor(store).isNotEmpty) return;
+    // Trimmed, inner spaces collapsed, email lowercased (as the API stores them).
+    final form = {for (final e in _form.entries) e.key: rules.clean(e.value)}..['email'] = _form['email']!.trim().toLowerCase();
     setState(() => _saving = true);
     // The full record: existing fields kept, form fields replaced.
     final record = {...?widget.student, ...form, 'avatarInitials': initials(form['fullName']!)};
@@ -414,6 +435,8 @@ class _StudentFormState extends State<StudentForm> {
       () => store.save(AdminCollection.students, record, action: '${widget.student != null ? 'Updated' : 'Added'} student ${form['fullName']}'),
       success: 'Student saved',
       onError: (message) => _error = message,
+      // e.g. "Email is already registered." under Email.
+      onFieldErrors: (errors) => _serverErrors = errors,
     );
     if (!mounted) return;
     setState(() => _saving = false);
@@ -422,8 +445,10 @@ class _StudentFormState extends State<StudentForm> {
 
   @override
   Widget build(BuildContext context) {
-    final sections = context.watch<AdminStore>().sections;
-    final errors = _submitted ? _errors : const <String, String>{};
+    final store = context.watch<AdminStore>();
+    final sections = store.sections;
+    final all = _errorsFor(store);
+    final errors = {for (final e in all.entries) if (_submitted || _touched.contains(e.key)) e.key: e.value};
     final years = yearLevelOptions.where((y) => sectionsFor(sections, _form['program']!, y).isNotEmpty).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -438,12 +463,25 @@ class _StudentFormState extends State<StudentForm> {
           minItemWidth: 240,
           children: [
             for (final (key, label, type) in _textFields)
-              TextField(
-                key: Key('student-$key'),
-                controller: _controllers[key],
-                keyboardType: type,
-                decoration: InputDecoration(labelText: label, errorText: errors[key]),
-                onChanged: (v) => setState(() => _form[key] = v),
+              Focus(
+                onFocusChange: (focused) => focused ? null : setState(() => _touched.add(key)),
+                child: TextField(
+                  key: Key('student-$key'),
+                  controller: _controllers[key],
+                  keyboardType: type,
+                  maxLength: const {'studentId': 10, 'email': 254, 'address': 300, 'contactNumber': 30, 'emergencyContactNumber': 30}[key] ?? 100,
+                  decoration: InputDecoration(
+                    labelText: label,
+                    hintText: const {'studentId': 'e.g. 2024-00115', 'contactNumber': 'e.g. 0917 123 4567', 'emergencyContactNumber': 'e.g. 0917 123 4567'}[key],
+                    errorText: errors[key],
+                    errorMaxLines: 3,
+                    counterText: '',
+                  ),
+                  onChanged: (v) => setState(() {
+                    _form[key] = v;
+                    _serverErrors = {..._serverErrors}..remove(key);
+                  }),
+                ),
               ),
             InkWell(
               onTap: _pickDate,

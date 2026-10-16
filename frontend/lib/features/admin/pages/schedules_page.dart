@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/format.dart';
 import '../../../core/theme.dart';
+import '../../../core/validation.dart' as rules;
 import '../../../widgets/common.dart';
 import '../admin_widgets.dart';
 import '../data/admin_rules.dart';
@@ -367,6 +368,45 @@ class _ClassFormState extends State<_ClassForm> {
   late final _room = TextEditingController(text: '${widget.editing?['room'] ?? ''}');
   String _error = '';
   bool _saving = false;
+  // Messages under each field after saving is tried (the room also on blur), plus the API's.
+  bool _submitted = false;
+  bool _roomTouched = false;
+  Map<String, String> _serverErrors = const {};
+
+  /// Same rules as the API (scheduleRules + assertScheduleValid) and the web form.
+  Map<String, String> get _errors {
+    final errors = rules.onlyErrors({
+      'subjectCode': _subject == null ? 'Subject is required.' : null,
+      'section': _section == null ? 'Section is required.' : null,
+      'instructor': _instructor == null ? 'Instructor is required.' : null,
+      'day': _day == null ? 'Day is required.' : null,
+      'startTime': _start == null ? 'Start time is required.' : null,
+      'endTime': _end == null ? 'End time is required.' : null,
+      'room': rules.room(_room.text),
+    });
+    if (_start != null && _end != null) {
+      final start = timeToMinutes(_start), end = timeToMinutes(_end);
+      if (end <= start) {
+        errors['endTime'] = 'End time must be after start time.';
+      } else if (start < 420) {
+        errors['startTime'] = 'Classes must be within 07:00–18:00.';
+      } else if (end > 1080) {
+        errors['endTime'] = 'Classes must be within 07:00–18:00.';
+      }
+    }
+    return {...errors, ..._serverErrors};
+  }
+
+  String? _shown(String field) => (_submitted || (field == 'room' && _roomTouched)) ? _errors[field] : null;
+
+  void _set(String field, void Function() change) => setState(() {
+    change();
+    _error = '';
+    _serverErrors = {..._serverErrors}
+      ..remove(field)
+      ..remove('startTime')
+      ..remove('endTime');
+  });
 
   @override
   void dispose() {
@@ -383,19 +423,16 @@ class _ClassFormState extends State<_ClassForm> {
     );
     if (picked == null) return;
     final value = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-    setState(() => start ? _start = value : _end = value);
+    _set(start ? 'startTime' : 'endTime', () => start ? _start = value : _end = value);
   }
 
   Future<void> _save(List<Map<String, dynamic>> subjects) async {
-    setState(() => _error = '');
-    if ([_subject, _section, _instructor, _day, _start, _end].any((v) => v == null || v.isEmpty) || _room.text.trim().isEmpty) {
-      setState(() => _error = 'Missing fields: Please fill in all fields before saving.');
-      return;
-    }
-    if (timeToMinutes(_end) <= timeToMinutes(_start)) {
-      setState(() => _error = 'Invalid time: End time must be after start time.');
-      return;
-    }
+    if (_saving) return; // no double submits
+    setState(() {
+      _error = '';
+      _submitted = true;
+    });
+    if (_errors.isNotEmpty) return;
     final store = context.read<AdminStore>();
     final subject = subjects.firstWhere((s) => s['code'] == _subject);
     // The full record: existing fields kept, form fields replaced.
@@ -409,11 +446,12 @@ class _ClassFormState extends State<_ClassForm> {
       'day': _day,
       'startTime': _start,
       'endTime': _end,
-      'room': _room.text.trim(),
+      'room': rules.clean(_room.text),
     };
     try {
       validateSchedule(record, store.schedules);
     } on FormatException catch (e) {
+      // Conflicts concern the whole class, so they go above the fields.
       setState(() => _error = 'Cannot save schedule: ${e.message}');
       return;
     }
@@ -426,6 +464,7 @@ class _ClassFormState extends State<_ClassForm> {
       success: editing ? 'Class updated' : 'Class added',
       description: editing ? '${subject['title']} for $_section has been updated.' : '${subject['title']} for $_section has been scheduled.',
       onError: (message) => _error = message,
+      onFieldErrors: (errors) => _serverErrors = errors,
     );
     if (!mounted) return;
     setState(() => _saving = false);
@@ -445,7 +484,12 @@ class _ClassFormState extends State<_ClassForm> {
     Widget timeField(String label, String? value, bool start) => InkWell(
       onTap: () => _pickTime(start),
       child: InputDecorator(
-        decoration: InputDecoration(labelText: label, suffixIcon: const Icon(Icons.access_time, size: 18)),
+        decoration: InputDecoration(
+          labelText: label,
+          suffixIcon: const Icon(Icons.access_time, size: 18),
+          errorText: _shown(start ? 'startTime' : 'endTime'),
+          errorMaxLines: 2,
+        ),
         child: Text(value == null ? '--:--' : '$value  (${formatTime(value)})'),
       ),
     );
@@ -465,18 +509,37 @@ class _ClassFormState extends State<_ClassForm> {
           value: _subject,
           options: [for (final s in subjects) '${s['code']}'],
           labels: {for (final s in subjects) '${s['code']}': '${s['code']} - ${s['title']}'},
-          onChanged: (v) => setState(() => _subject = v),
+          errorText: _shown('subjectCode'),
+          onChanged: (v) => _set('subjectCode', () => _subject = v),
         ),
         const SizedBox(height: 12),
         ResponsiveGrid(
           minItemWidth: 220,
           children: [
-            SelectField(label: 'Section', value: _section, options: store.sections, onChanged: (v) => setState(() => _section = v)),
-            SelectField(label: 'Instructor', value: _instructor, options: instructors, onChanged: (v) => setState(() => _instructor = v)),
-            SelectField(label: 'Day', value: _day, options: days, onChanged: (v) => setState(() => _day = v)),
-            TextField(
-              controller: _room,
-              decoration: const InputDecoration(labelText: 'Room', hintText: 'e.g. Rm 401'),
+            SelectField(
+              label: 'Section',
+              value: _section,
+              options: store.sections,
+              errorText: _shown('section'),
+              onChanged: (v) => _set('section', () => _section = v),
+            ),
+            SelectField(
+              label: 'Instructor',
+              value: _instructor,
+              options: instructors,
+              errorText: _shown('instructor'),
+              onChanged: (v) => _set('instructor', () => _instructor = v),
+            ),
+            SelectField(label: 'Day', value: _day, options: days, errorText: _shown('day'), onChanged: (v) => _set('day', () => _day = v)),
+            Focus(
+              onFocusChange: (focused) => focused ? null : setState(() => _roomTouched = true),
+              child: TextField(
+                key: const Key('schedule-room'),
+                controller: _room,
+                maxLength: 30,
+                onChanged: (_) => _set('room', () {}),
+                decoration: InputDecoration(labelText: 'Room', hintText: 'e.g. Rm 401', errorText: _shown('room'), errorMaxLines: 2, counterText: ''),
+              ),
             ),
             timeField('Start Time', _start, true),
             timeField('End Time', _end, false),

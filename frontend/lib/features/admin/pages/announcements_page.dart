@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/format.dart';
 import '../../../core/theme.dart';
+import '../../../core/validation.dart' as rules;
 import '../../../widgets/common.dart';
 import '../admin_widgets.dart';
 import '../data/admin_rules.dart';
@@ -203,6 +204,34 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
   late String _target = '${widget.editing?['targetValue'] ?? 'All Students'}';
   String _error = '';
   bool _saving = false;
+  // Messages under each field: after leaving it (blur) or on save, plus the API's.
+  bool _submitted = false;
+  final Set<String> _touched = {};
+  Map<String, String> _serverErrors = const {};
+
+  /// Same rules as the API (announcementRules + assertAnnouncementTarget).
+  Map<String, String> _errorsFor(List<String> sections) {
+    String? target;
+    try {
+      validateTarget(_audience, _target, sections);
+    } on FormatException catch (e) {
+      target = e.message;
+    }
+    return {
+      ...rules.onlyErrors({
+        'title': rules.lengthBetween(_title.text, 'Title', 5, 200),
+        'category': _category == null ? 'Category is required.' : null,
+        'message': rules.lengthBetween(_message.text, 'Message', 10, 5000),
+        'targetValue': target,
+      }),
+      ..._serverErrors,
+    };
+  }
+
+  void _edited(String field) => setState(() {
+    _error = '';
+    _serverErrors = {..._serverErrors}..remove(field);
+  });
 
   @override
   void dispose() {
@@ -212,24 +241,17 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
   }
 
   Future<void> _save() async {
+    if (_saving) return; // no double submits
     final store = context.read<AdminStore>();
-    try {
-      validateTarget(_audience, _target, store.sections);
-    } on FormatException catch (e) {
-      setState(() => _error = 'Choose a target audience: ${e.message}');
-      return;
-    }
-    if (_title.text.trim().isEmpty || _category == null || _message.text.trim().isEmpty) {
-      setState(() => _error = 'Missing fields: Please fill in title, category, and message.');
-      return;
-    }
+    setState(() => _submitted = true);
+    if (_errorsFor(store.sections).isNotEmpty) return;
     setState(() {
       _error = '';
       _saving = true;
     });
     final editing = widget.editing;
-    final title = _title.text;
-    final fields = {'title': title, 'category': _category, 'message': _message.text, 'targetAudience': _audience, 'targetValue': _target};
+    final title = rules.clean(_title.text);
+    final fields = {'title': title, 'category': _category, 'message': _message.text.trim(), 'targetAudience': _audience, 'targetValue': _target};
     // The full record: an edit keeps every other field; a new one starts as a draft.
     final record = editing != null
         ? {...editing, ...fields}
@@ -241,6 +263,7 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
       success: editing != null ? 'Announcement updated' : 'Announcement created',
       description: editing != null ? '"$title" has been updated.' : '"$title" has been saved as a draft.',
       onError: (message) => _error = message,
+      onFieldErrors: (errors) => _serverErrors = errors,
     );
     if (!mounted) return;
     setState(() => _saving = false);
@@ -250,6 +273,8 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
   @override
   Widget build(BuildContext context) {
     final sections = context.watch<AdminStore>().sections;
+    final all = _errorsFor(sections);
+    String? shown(String field) => (_submitted || _touched.contains(field)) ? all[field] : null;
     final (targetLabel, targetOptions) = switch (_audience) {
       'Specific Program' => ('Program', programOptions),
       'Specific Year Level' => ('Year Level', yearLevelOptions),
@@ -265,22 +290,44 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
         ),
         const SizedBox(height: 12),
         if (_error.isNotEmpty) AlertBox(_error),
-        TextField(
-          key: const Key('announcement-title'),
-          controller: _title,
-          maxLength: 200,
-          decoration: const InputDecoration(labelText: 'Title', hintText: 'Enter announcement title...'),
+        Focus(
+          onFocusChange: (focused) => focused ? null : setState(() => _touched.add('title')),
+          child: TextField(
+            key: const Key('announcement-title'),
+            controller: _title,
+            maxLength: 200,
+            onChanged: (_) => _edited('title'),
+            decoration: InputDecoration(labelText: 'Title', hintText: 'Enter announcement title...', errorText: shown('title')),
+          ),
         ),
         const SizedBox(height: 8),
-        SelectField(label: 'Category', value: _category, options: announcementCategoryOptions, onChanged: (v) => setState(() => _category = v)),
+        SelectField(
+          label: 'Category',
+          value: _category,
+          options: announcementCategoryOptions,
+          errorText: shown('category'),
+          onChanged: (v) {
+            _category = v;
+            _edited('category');
+          },
+        ),
         const SizedBox(height: 12),
-        TextField(
-          key: const Key('announcement-message'),
-          controller: _message,
-          minLines: 4,
-          maxLines: 8,
-          maxLength: 5000,
-          decoration: const InputDecoration(labelText: 'Message', hintText: 'Enter announcement message...', alignLabelWithHint: true),
+        Focus(
+          onFocusChange: (focused) => focused ? null : setState(() => _touched.add('message')),
+          child: TextField(
+            key: const Key('announcement-message'),
+            controller: _message,
+            minLines: 4,
+            maxLines: 8,
+            maxLength: 5000,
+            onChanged: (_) => _edited('message'),
+            decoration: InputDecoration(
+              labelText: 'Message',
+              hintText: 'Enter announcement message...',
+              alignLabelWithHint: true,
+              errorText: shown('message'),
+            ),
+          ),
         ),
         const SizedBox(height: 8),
         SelectField(
@@ -299,7 +346,11 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
             label: targetLabel,
             value: _target,
             options: targetOptions,
-            onChanged: (v) => setState(() => _target = v!),
+            errorText: shown('targetValue'),
+            onChanged: (v) {
+              _target = v!;
+              _edited('targetValue');
+            },
           ),
         ],
         const SizedBox(height: 16),

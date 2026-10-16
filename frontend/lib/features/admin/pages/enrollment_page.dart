@@ -371,6 +371,7 @@ class _RejectDialogState extends State<_RejectDialog> {
           minLines: 4,
           maxLines: 6,
           maxLength: 1000,
+          onChanged: (_) => _error == null ? null : setState(() => _error = null),
           decoration: InputDecoration(hintText: 'Enter rejection remarks...', errorText: _error),
         ),
       ],
@@ -381,7 +382,7 @@ class _RejectDialogState extends State<_RejectDialog> {
         style: FilledButton.styleFrom(backgroundColor: AppColors.adminDestructive),
         onPressed: () {
           if (_remarks.text.trim().isEmpty) {
-            setState(() => _error = 'Please provide a reason for rejection.');
+            setState(() => _error = 'Rejection remarks are required.');
             return;
           }
           Navigator.pop(context, _remarks.text.trim());

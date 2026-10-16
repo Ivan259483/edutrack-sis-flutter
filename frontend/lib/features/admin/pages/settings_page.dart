@@ -36,12 +36,15 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
 
   /// settingsSchema in admin/src/data/schema.ts.
   String? _validateYear(String value) {
-    if (!RegExp(r'^\d{4}-\d{4}$').hasMatch(value)) return 'Use YYYY-YYYY for the academic year.';
-    if (int.parse(value.substring(5)) != int.parse(value.substring(0, 4)) + 1) return 'Academic year must span consecutive years.';
+    // Same messages as the API (settingsRules).
+    if (value.isEmpty) return 'Academic year is required.';
+    if (!RegExp(r'^\d{4}-\d{4}$').hasMatch(value)) return 'Use YYYY-YYYY for the academic year, e.g. 2024-2025.';
+    if (int.parse(value.substring(5)) != int.parse(value.substring(0, 4)) + 1) return 'Academic year must span consecutive years, e.g. 2024-2025.';
     return null;
   }
 
   Future<void> _save() async {
+    if (_saving) return; // no double submits
     final year = _year.text.trim();
     setState(() => _yearError = _validateYear(year));
     if (_yearError != null) {
@@ -54,6 +57,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       () => context.read<AdminStore>().saveSettings({..._settings, 'academicYear': year}, action: 'Updated academic period and system settings'),
       success: 'Settings saved',
       description: 'System settings have been updated successfully.',
+      onFieldErrors: (errors) => _yearError = errors['academicYear'] ?? errors.values.first,
     );
     if (!mounted) return;
     setState(() {

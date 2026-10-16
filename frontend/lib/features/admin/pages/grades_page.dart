@@ -325,6 +325,9 @@ class _EncodeFormState extends State<_EncodeForm> {
   late final _final = TextEditingController(text: _initial('finalGrade'));
   String _error = '';
   bool _saving = false;
+  // Messages under each grade: after leaving the field (blur) or on save, plus the API's.
+  final Set<String> _touched = {};
+  Map<String, String> _serverErrors = const {};
 
   String _initial(String field) => widget.grade[field] is num ? '${widget.grade[field]}' : '';
 
@@ -335,16 +338,26 @@ class _EncodeFormState extends State<_EncodeForm> {
     super.dispose();
   }
 
-  Future<void> _save() async {
-    final g = widget.grade;
-    final num? midterm, finalGrade;
+  /// Same rule as the API: empty, or 1.00–5.00 with up to two decimals.
+  String? _gradeError(String field) {
+    if (_serverErrors[field] != null) return _serverErrors[field];
     try {
-      midterm = parseGrade(_midterm.text);
-      finalGrade = parseGrade(_final.text);
+      parseGrade((field == 'midtermGrade' ? _midterm : _final).text);
+      return null;
     } on FormatException catch (e) {
-      setState(() => _error = e.message);
-      return;
+      return e.message;
     }
+  }
+
+  String? _shown(String field) => _touched.contains(field) ? _gradeError(field) : null;
+
+  Future<void> _save() async {
+    if (_saving) return; // no double submits
+    final g = widget.grade;
+    setState(() => _touched.addAll(['midtermGrade', 'finalGrade']));
+    if (_gradeError('midtermGrade') != null || _gradeError('finalGrade') != null) return;
+    final midterm = parseGrade(_midterm.text);
+    final finalGrade = parseGrade(_final.text);
     setState(() {
       _error = '';
       _saving = true;
@@ -363,6 +376,7 @@ class _EncodeFormState extends State<_EncodeForm> {
       success: 'Grade saved',
       description: '${g['subjectTitle']} grade for ${g['studentName']} has been encoded.',
       onError: (message) => _error = message,
+      onFieldErrors: (errors) => _serverErrors = errors,
     );
     if (!mounted) return;
     setState(() => _saving = false);
@@ -389,19 +403,21 @@ class _EncodeFormState extends State<_EncodeForm> {
         ResponsiveGrid(
           minItemWidth: 200,
           children: [
-            TextField(
-              key: const Key('grade-midterm'),
-              controller: _midterm,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Midterm Grade (1.00 - 5.00)', hintText: 'e.g. 1.50'),
-            ),
-            TextField(
-              key: const Key('grade-final'),
-              controller: _final,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Final Grade (1.00 - 5.00)', hintText: 'e.g. 1.25'),
-              onChanged: (_) => setState(() {}),
-            ),
+            for (final (field, controller, label, hint) in [
+              ('midtermGrade', _midterm, 'Midterm Grade (1.00 - 5.00)', 'e.g. 1.50'),
+              ('finalGrade', _final, 'Final Grade (1.00 - 5.00)', 'e.g. 1.25'),
+            ])
+              Focus(
+                onFocusChange: (focused) => focused ? null : setState(() => _touched.add(field)),
+                child: TextField(
+                  key: Key(field == 'midtermGrade' ? 'grade-midterm' : 'grade-final'),
+                  controller: controller,
+                  maxLength: 4,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(labelText: label, hintText: hint, errorText: _shown(field), errorMaxLines: 3, counterText: ''),
+                  onChanged: (_) => setState(() => _serverErrors = const {}),
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 12),
