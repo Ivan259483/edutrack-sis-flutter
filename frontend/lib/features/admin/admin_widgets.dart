@@ -296,13 +296,17 @@ class FilterGrid extends StatelessWidget {
 
 /// Runs an admin change; on failure shows the web's "Changes were not saved"
 /// toast with the reason, or passes the reason to [onError] (forms show it
-/// inline, since a dialog covers the toast). Returns true on success.
+/// inline, since a dialog covers the toast). With [onFieldErrors], the API's
+/// field messages (e.g. "Email is already registered.") go to the form's
+/// fields instead, and [onError] only gets errors that belong to no field.
+/// Returns true on success.
 Future<bool> runChange(
   BuildContext context,
   Future<void> Function() change, {
   String? success,
   String? description,
   void Function(String message)? onError,
+  void Function(Map<String, String> errors)? onFieldErrors,
 }) async {
   try {
     await change();
@@ -310,7 +314,10 @@ Future<bool> runChange(
     return true;
   } catch (error) {
     final message = error is FormatException ? ruleMessage(error) : apiErrorMessage(error);
-    if (onError != null) {
+    final fields = apiFieldErrors(error);
+    if (onFieldErrors != null && fields.isNotEmpty) {
+      onFieldErrors(fields);
+    } else if (onError != null) {
       onError(message);
     } else if (context.mounted) {
       await showProblem(context, 'Changes were not saved', message);

@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/admin/admin_routes.dart';
+import '../features/auth/forgot_password_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/auth/register_page.dart';
 import '../features/auth/simple_pages.dart';
 import '../features/student/student_routes.dart';
 import 'session.dart';
 
-const _public = {'/login', '/register'};
+const _public = {'/login', '/register', '/forgot-password'};
 
 /// Home screen for the signed-in account's role.
 String homeFor(AppUser user) => user.isAdmin ? '/admin' : '/student/dashboard';
@@ -28,7 +29,8 @@ String? guard(Session session, String location) {
   return null;
 }
 
-GoRouter buildRouter(Session session) => GoRouter(
+GoRouter buildRouter(Session session, {GlobalKey<NavigatorState>? navigatorKey}) => GoRouter(
+  navigatorKey: navigatorKey,
   initialLocation: '/loading',
   refreshListenable: session,
   redirect: (context, state) => guard(session, state.matchedLocation),
@@ -41,6 +43,10 @@ GoRouter buildRouter(Session session) => GoRouter(
       builder: (context, state) => LoginPage(key: ValueKey(state.uri.queryParameters['role']), initialRole: state.uri.queryParameters['role'] ?? 'student'),
     ),
     GoRoute(path: '/register', builder: (context, state) => const RegisterPage()),
+    GoRoute(
+      path: '/forgot-password',
+      builder: (context, state) => ForgotPasswordPage(initialRole: state.uri.queryParameters['role'] ?? 'student'),
+    ),
     studentRoutes(),
     adminRoutes(),
   ],
@@ -57,10 +63,29 @@ class AppRouterScope extends StatefulWidget {
 }
 
 class _AppRouterScopeState extends State<AppRouterScope> {
-  late final GoRouter _router = buildRouter(widget.session);
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  late final GoRouter _router = buildRouter(widget.session, navigatorKey: _navigatorKey);
+  late SessionStatus _status = widget.session.status;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.session.addListener(_sessionChanged);
+  }
+
+  /// Signing out (or the server ending the session) closes any open dialog or
+  /// sheet first, so the login screen isn't left underneath one.
+  void _sessionChanged() {
+    final next = widget.session.status;
+    if (_status == SessionStatus.signedIn && next == SessionStatus.signedOut) {
+      _navigatorKey.currentState?.popUntil((route) => route is! PopupRoute);
+    }
+    _status = next;
+  }
 
   @override
   void dispose() {
+    widget.session.removeListener(_sessionChanged);
     _router.dispose();
     super.dispose();
   }

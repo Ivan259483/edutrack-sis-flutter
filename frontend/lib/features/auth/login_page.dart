@@ -26,6 +26,16 @@ class _LoginPageState extends State<LoginPage> {
   bool _rememberMe = false;
   bool _loading = false;
   String _error = '';
+  // Messages from the API for a field (rare: the form checks the same first).
+  Map<String, String> _fieldErrors = const {};
+  // e.g. "Your password has been reset..." or "Your password was changed..."
+  (String, bool)? _notice;
+
+  @override
+  void initState() {
+    super.initState();
+    _notice = context.read<Session>().takeNotice();
+  }
 
   @override
   void dispose() {
@@ -35,6 +45,11 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _submit() async {
+    if (_loading) return; // no double submits
+    setState(() {
+      _fieldErrors = const {};
+      _notice = null;
+    });
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _error = '';
@@ -45,13 +60,16 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted || error == null) return;
     setState(() {
       _loading = false;
-      _error = error;
+      _fieldErrors = error.fields;
+      // Wrong credentials and "too many attempts" (with the wait time) go in the banner.
+      _error = error.fields.isEmpty ? error.message : '';
     });
   }
 
   void _selectRole(String role) => setState(() {
     _role = role;
     _error = '';
+    _fieldErrors = const {};
   });
 
   void _fillDemo(String role) {
@@ -93,12 +111,13 @@ class _LoginPageState extends State<LoginPage> {
               decoration: BoxDecoration(color: AppColors.slate900, borderRadius: BorderRadius.circular(10)),
               child: Row(
                 children: [
-                  _RoleTab(label: 'Student', icon: Icons.school, selected: student, onTap: () => _selectRole('student')),
-                  _RoleTab(label: 'Administrator', icon: Icons.shield, selected: !student, onTap: () => _selectRole('admin')),
+                  RoleTab(label: 'Student', icon: Icons.school, selected: student, onTap: () => _selectRole('student')),
+                  RoleTab(label: 'Administrator', icon: Icons.shield, selected: !student, onTap: () => _selectRole('admin')),
                 ],
               ),
             ),
             const SizedBox(height: 22),
+            if (_notice != null) _notice!.$2 ? DarkError(_notice!.$1) : DarkNotice(_notice!.$1),
             if (_error.isNotEmpty) DarkError(_error),
             DarkLabel(student ? 'Student Email or Student ID' : 'Administrator Email'),
             TextFormField(
@@ -107,14 +126,15 @@ class _LoginPageState extends State<LoginPage> {
               keyboardType: student ? TextInputType.text : TextInputType.emailAddress,
               autofillHints: const [AutofillHints.username],
               textInputAction: TextInputAction.next,
+              maxLength: 254,
+              autovalidateMode: AutovalidateMode.onUnfocus,
+              forceErrorText: _fieldErrors['identifier'],
+              onChanged: (_) => _fieldErrors.isEmpty ? null : setState(() => _fieldErrors = const {}),
               style: const TextStyle(color: Colors.white),
-              decoration: darkInput(hint: student ? 'e.g. juan.delacruz@edutrack.edu' : 'e.g. admin@edutrack.edu'),
-              validator: (value) {
-                final text = (value ?? '').trim();
-                if (text.isEmpty) return 'Please fill out this field.';
-                if (!student && !RegExp(r'^[^\s@]+@[^\s@]+$').hasMatch(text)) return 'Please enter an email address.';
-                return null;
-              },
+              decoration: darkInput(hint: student ? 'e.g. juan.delacruz@edutrack.edu' : 'e.g. admin@edutrack.edu').copyWith(counterText: ''),
+              // Both fields are only required here: older accounts keep signing in.
+              validator: (value) =>
+                  (value ?? '').trim().isEmpty ? (student ? 'Enter your email or Student ID.' : 'Enter your administrator email.') : null,
             ),
             const SizedBox(height: 16),
             const DarkLabel('Password'),
@@ -124,6 +144,9 @@ class _LoginPageState extends State<LoginPage> {
               obscureText: !_showPassword,
               autofillHints: const [AutofillHints.password],
               onFieldSubmitted: (_) => _submit(),
+              maxLength: 128,
+              autovalidateMode: AutovalidateMode.onUnfocus,
+              forceErrorText: _fieldErrors['password'],
               style: const TextStyle(color: Colors.white),
               decoration: darkInput(
                 hint: 'Enter password',
@@ -132,8 +155,8 @@ class _LoginPageState extends State<LoginPage> {
                   icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility, size: 18, color: AppColors.slate300),
                   onPressed: () => setState(() => _showPassword = !_showPassword),
                 ),
-              ),
-              validator: (value) => (value ?? '').isEmpty ? 'Please fill out this field.' : null,
+              ).copyWith(counterText: ''),
+              validator: (value) => (value ?? '').isEmpty ? 'Enter your password.' : null,
             ),
             const SizedBox(height: 12),
             Row(
@@ -151,6 +174,16 @@ class _LoginPageState extends State<LoginPage> {
                 GestureDetector(
                   onTap: () => setState(() => _rememberMe = !_rememberMe),
                   child: const Text('Remember Me', style: TextStyle(color: AppColors.slate400, fontSize: 13)),
+                ),
+                const Spacer(),
+                // Works for both tabs; the role carries over.
+                GestureDetector(
+                  key: const Key('login-forgot'),
+                  onTap: () => context.push('/forgot-password?role=$_role'),
+                  child: const Text(
+                    'Forgot password?',
+                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
                 ),
               ],
             ),
@@ -228,8 +261,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-class _RoleTab extends StatelessWidget {
-  const _RoleTab({required this.label, required this.icon, required this.selected, required this.onTap});
+class RoleTab extends StatelessWidget {
+  const RoleTab({super.key, required this.label, required this.icon, required this.selected, required this.onTap});
   final String label;
   final IconData icon;
   final bool selected;

@@ -53,14 +53,21 @@ class AuthIcon extends StatelessWidget {
 }
 
 /// Dark input style used on the sign-in screens (bg-dark border-secondary text-white).
-InputDecoration darkInput({String? hint, Widget? suffix, Color? borderColor}) {
+/// [errorText] shows the red message under the field and a red border.
+InputDecoration darkInput({String? hint, Widget? suffix, Color? borderColor, String? errorText}) {
   final border = OutlineInputBorder(
     borderRadius: BorderRadius.circular(8),
     borderSide: BorderSide(color: borderColor ?? AppColors.slate600),
   );
+  final errorBorder = border.copyWith(borderSide: const BorderSide(color: AppColors.red500));
   return InputDecoration(
     hintText: hint,
     hintStyle: const TextStyle(color: AppColors.slate500),
+    errorText: errorText,
+    errorMaxLines: 3,
+    errorStyle: const TextStyle(color: AppColors.red400, fontSize: 12),
+    errorBorder: errorBorder,
+    focusedErrorBorder: errorBorder.copyWith(borderSide: const BorderSide(color: AppColors.red500, width: 1.5)),
     filled: true,
     fillColor: AppColors.dark,
     isDense: true,
@@ -114,6 +121,26 @@ class DarkError extends StatelessWidget {
       message,
       textAlign: TextAlign.center,
       style: const TextStyle(color: AppColors.red400, fontSize: 13),
+    ),
+  );
+}
+
+/// Green (success) or blue (info) box on the dark sign-in card.
+class DarkNotice extends StatelessWidget {
+  const DarkNotice(this.message, {super.key, this.info = false});
+  final String message;
+  final bool info;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+    decoration: BoxDecoration(color: info ? const Color(0x262563EB) : const Color(0x2622C55E), borderRadius: BorderRadius.circular(10)),
+    child: Text(
+      message,
+      textAlign: TextAlign.center,
+      style: TextStyle(color: info ? const Color(0xFF93C5FD) : const Color(0xFF4ADE80), fontSize: 13),
     ),
   );
 }

@@ -12,6 +12,7 @@ class TokenStore {
   static const _key = 'edutrack_token';
   final FlutterSecureStorage _storage;
   String? _token;
+  bool _remembered = false;
 
   String? get token => _token;
 
@@ -22,11 +23,17 @@ class TokenStore {
     } catch (_) {
       _token = null;
     }
+    _remembered = _token != null;
     return _token;
   }
 
+  /// Swaps in a new token, kept the same way as the current one. Changing the
+  /// password signs out every older token, and the API returns this one.
+  Future<void> replace(String token) => save(token, remember: _remembered);
+
   Future<void> save(String token, {required bool remember}) async {
     _token = token;
+    _remembered = remember;
     try {
       remember ? await writePersisted(token) : await deletePersisted();
     } catch (_) {
@@ -36,6 +43,7 @@ class TokenStore {
 
   Future<void> clear() async {
     _token = null;
+    _remembered = false;
     try {
       await deletePersisted();
     } catch (_) {
@@ -75,7 +83,8 @@ class ApiClient {
         },
         onError: (error, handler) {
           if (error.response?.statusCode == 401 && !error.requestOptions.path.contains('/auth/login')) {
-            onUnauthorized?.call();
+            // e.g. "Your password was changed. Please sign in again."
+            onUnauthorized?.call(apiErrorMessage(error, 'Your session has ended. Please sign in again.'));
           }
           handler.next(error);
         },
@@ -86,8 +95,9 @@ class ApiClient {
   final TokenStore tokens;
   final Dio dio;
 
-  /// Set by the session: ends it when the server rejects the token.
-  VoidCallback? onUnauthorized;
+  /// Set by the session: ends it when the server rejects the token, with the
+  /// server's reason.
+  void Function(String message)? onUnauthorized;
 
   Future<dynamic> get(String path) async => (await dio.get<dynamic>(path)).data;
   Future<dynamic> post(String path, [Object? body]) async => (await dio.post<dynamic>(path, data: body)).data;
@@ -112,6 +122,27 @@ String apiErrorMessage(Object error, [String fallback = 'Something went wrong. P
   }
   if (error is RuleError) return error.message;
   return fallback;
+}
+
+/// Field messages from an API error, keyed by field. The API answers every
+/// failure as { message, errors?: [{ field, message }] }.
+Map<String, String> apiFieldErrors(Object error) {
+  if (error is! DioException) return const {};
+  final data = error.response?.data;
+  final errors = data is Map ? data['errors'] : null;
+  if (errors is! List) return const {};
+  return {
+    for (final e in errors)
+      if (e is Map && e['field'] is String && e['message'] is String) e['field'] as String: e['message'] as String,
+  };
+}
+
+/// Seconds the API asks to wait before trying again (rate limits), if any.
+int? apiRetryAfter(Object error) {
+  if (error is! DioException) return null;
+  final data = error.response?.data;
+  final value = data is Map ? data['retryAfter'] : null;
+  return value is num && value > 0 ? value.ceil() : null;
 }
 
 /// A business rule the app checks before calling the API (same messages as the web).

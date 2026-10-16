@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'api.dart';
@@ -39,6 +40,23 @@ class Session extends ChangeNotifier {
   SessionStatus status = SessionStatus.loading;
   AppUser? user;
 
+  /// One-time message for the login screen, e.g. after a password reset or
+  /// when the server signed this session out. The login screen takes it.
+  String? notice;
+  bool noticeIsError = false;
+
+  /// Returns the pending notice once and forgets it.
+  (String, bool)? takeNotice() {
+    final pending = notice;
+    notice = null;
+    return pending == null ? null : (pending, noticeIsError);
+  }
+
+  void setNotice(String message, {bool error = false}) {
+    notice = message;
+    noticeIsError = error;
+  }
+
   /// Re-validates a remembered token with the server when the app starts.
   Future<void> restore() async {
     final token = await api.tokens.load();
@@ -49,21 +67,24 @@ class Session extends ChangeNotifier {
     try {
       final data = await api.get('/auth/me') as Map<String, dynamic>;
       _set(SessionStatus.signedIn, AppUser.fromJson(Map<String, dynamic>.from(data['user'] as Map)));
-    } catch (_) {
+    } catch (error) {
+      // A remembered token from before a password reset is refused (401).
+      if (error is DioException && error.response?.statusCode == 401) setNotice(apiErrorMessage(error), error: true);
       await api.tokens.clear();
       _set(SessionStatus.signedOut, null);
     }
   }
 
-  /// Returns null on success, or the error message to show.
-  Future<String?> login(String identifier, String password, String role, {bool remember = false}) async {
+  /// Returns null on success, or the error to show (message plus any field errors).
+  Future<({String message, Map<String, String> fields})?> login(String identifier, String password, String role, {bool remember = false}) async {
     try {
       final data = await api.post('/auth/login', {'identifier': identifier, 'password': password, 'role': role}) as Map<String, dynamic>;
       await api.tokens.save(data['token'] as String, remember: remember);
+      notice = null;
       _set(SessionStatus.signedIn, AppUser.fromJson(Map<String, dynamic>.from(data['user'] as Map)));
       return null;
     } catch (error) {
-      return apiErrorMessage(error, 'Login failed. Please check your credentials.');
+      return (message: apiErrorMessage(error, 'Login failed. Please check your credentials.'), fields: apiFieldErrors(error));
     }
   }
 
@@ -78,8 +99,12 @@ class Session extends ChangeNotifier {
     _set(SessionStatus.signedOut, null);
   }
 
-  void _expire() {
-    if (status == SessionStatus.signedIn) logout();
+  /// The server refused the token (expired, or the password was changed or
+  /// reset elsewhere): back to the login screen with the server's reason.
+  void _expire(String message) {
+    if (status != SessionStatus.signedIn) return;
+    setNotice(message, error: true);
+    logout();
   }
 
   void _set(SessionStatus next, AppUser? nextUser) {
